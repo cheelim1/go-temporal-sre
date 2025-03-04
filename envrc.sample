@@ -1,0 +1,12 @@
+# Copy this and name it .envrc (assuming direnv)
+set -o allexport
+
+echo "Setup Env for Demo"
+# PATH=~/DEVOPS/bin:~/KUBERNETES/bin:${PATH}
+# PATH=~/DEVOPS/bin:${PATH}
+echo "Setup the AWS CONFIG location + REGION ..."
+AWS_DEFAULT_REGION=us-east-1
+# AWS_CONFIG_FILE=~/DEVOPS/AWS-config
+# KUBECONFIG=kubeconfig
+
+set +o allexport
