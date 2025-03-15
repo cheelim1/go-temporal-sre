@@ -1,0 +1,115 @@
+## Title of Slide or Section (must begin with ##)
+
+Some Text
+
+### Subsection {#anchor}
+
+- bullets
+- more bullets
+- a bullet continued
+  on the next line
+
+#### Sub-subsection
+
+Some More text
+
+	Preformatted text (code block)
+	is indented (by one tab, or four spaces)
+
+Further Text, including command invocations.
+
+## Section 2: Example formatting {#fmt}
+
+Formatting:
+
+_italic_
+// A comment that is completely ignored.
+: Speaker notes.
+**bold**
+`program`
+Markup—_especially italic text_—can easily be overused.
+_Why use scoped\_ptr_? Use plain **\*ptr** instead.
+
+Visit [the Go home page](https://golang.org/).
+
+## Kil-Cron
+
+:dramatic music ..
+
+.background images/kil-cron-overview.webp
+
+## Title KilCron: The End of an Era
+
+  - Witness the epic showdown where Temporal brings the outdated Cron to its knees!
+
+.image images/kil-cron-overview.webp
+
+## Title KilCron: The End of an Era
+
+  - Witness the epic showdown where Temporal brings the outdated Cron to its knees!
+
+.image images/kil-cron-cute.webp
+
+## Title KilCron: Revolutionizing Time
+
+  - Temporal isn't just replacing Cron; it's reinventing how we think about and manage time itself!
+
+.image images/kil-cron-good.webp
+
+## Title KilCron: Out with the Old, In with the New
+
+- Witness the playful retirement of Cron as Temporal ushers in a new era of workflow management.
+
+.image images/kil-cron-evil.png
+
+
+## Title What is Enterprise Software?
+
+- Enterprise software is designed to meet the needs of organizations rather than individuals.
+- Features scalability, robustness, and integration across different systems.
+- Example: Snowflake, a cloud-based data warehousing service, supports data analysis at scale.
+
+## Title What is Enterprise Software? (No, Really, What Is It?)
+  - Imagine software that’s like an office superhero, except it’s mostly stuck in meetings all day.
+  - It's supposed to solve big, complicated business problems (and justify equally big budgets).
+  - Snowflake, our hero in the cloud, doesn’t just store data—it hoards it like a digital dragon sitting on a goldmine.
+
+## Title ChatGPT's Definition: Now with Extra Sambal!
+  - According to ChatGPT (and who’s more reliable than a robot?), enterprise software is like nasi lemak of business tools.
+  - It's essential, versatile, and complex—perfect for feeding the whole company's data appetite.
+  - Just like how every state in Malaysia claims they have the best version, every software vendor swears their solution is the top choice.
+
+
+## Title Challenges in Enterprise
+  - Managing scheduled tasks across distributed systems is a common challenge.
+  - Cron jobs are often used for scheduling, but lack dynamic control and scalability.
+  - Authorization complexities increase as systems scale and integrate.
+
+## Title What is wrong with Cron?
+  - Cron provides limited error handling and no retry logic.
+  - It lacks support for real-time monitoring and logging.
+  - Difficult to scale and manage in distributed, cloud-based environments.
+
+## Title Solution with Temporal
+  - Temporal offers a robust platform for managing workflows and activities.
+  - Handles retries, error handling, and state persistence seamlessly.
+  - Scales dynamically with enterprise needs, providing observability and control.
+
+## Title Authentication vs Authorization
+  - Authentication is verifying a user's identity, while authorization determines access levels.
+  - Both are critical in securing enterprise applications.
+  - Often confused, but each plays a distinct role in security frameworks.
+
+## Title What is OpenFGA?
+  - OpenFGA is an open-source fine-grained access control system.
+  - It allows developers to define and enforce authorization policies dynamically.
+  - Suitable for complex, multi-user, and multi-role environments.
+
+
+## Title Temporal x OpenFGA Integration
+  - Integrating Temporal with OpenFGA facilitates just-in-time authorization.
+  - Enhances workflow security by dynamically applying access controls.
+  - Ideal for environments where permissions need to adapt quickly to changes.
+
+: presenter notes ...]]
+

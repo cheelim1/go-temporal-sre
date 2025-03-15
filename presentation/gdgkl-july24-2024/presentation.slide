@@ -1,0 +1,127 @@
+# Showcase: Go in Enterprise
+
+Solving common challenges with Temporal + OpenFGA
+Tags: temporal, openfga, authorization, cron
+
+*Disclaimer:* Talk is opinion of speaker; does not reflect position of employer.
+
+Michael Leow
+Go Enthusiast
+
+
+## What is Enterprise Software?
+
+- Enterprise software is designed to meet the needs of organizations rather than individuals.
+- Features scalability, robustness, and integration across different systems.
+- Making money for your company! $$$
+
+## TLDR
+
+- Boring, toily, what keeps your company alive
+
+- Every company is a Snowflake: unique business needs
+: Due to this; there is no one fits all; want to provide the components to assemble the solutions
+
+- Every Enterprise face challenges: Cron + Authorization
+
+.image images/snowflake.png 400 400
+
+
+## Cron
+## Problems with Cron
+
+- Startup getting traction
+- Any long running day-to-day process: reports, payment, data processing
+- Don't: Extend your web server timeout!
+
+- Cron to the rescue!!
+: Aha! Cron
+
+- Now got more problems
+: Running fine until it crash between item 90,000 out of 100,000 ..maybe
+
+## Cron - Wishful Thinking
+
+- Crob jobs start immediately; no latency, no failure!
+
+.image images/kil-cron-wishful.png 550 1000
+
+## Cron - Closer to Reality
+
+- Cron jobs have variable latency; no failure!
+
+.image images/kil-cron-closer.png 550 1000
+
+## Kil-Cron
+
+: dramatic music ..
+
+.background images/kil-cron-overview.webp
+
+## Cron - Reality / Demo
+
+- Cron jobs handling latency + failures; seamlessly!
+- Run `make start-kilcron` -> http://localhost:8888/demo/debug/
+
+.image images/kil-cron-temporal.png 500 900
+
+## Authorization
+## Authentication vs Authorization
+  - Authentication: Identity
+  - Authorization: Access levels.
+  - Authentication mostly solved: Okta, Ory, Clerk
+
+## What is OpenFGA?
+  - OpenFGA is an open-source fine-grained access control system; based off Zanzibar
+  - Model ReBAC to solve complex, multi-user, and multi-role scenarios
+
+.image images/openfga.png 450 800
+
+## Temporal x OpenFGA Integration
+  - Integrating Temporal with OpenFGA facilitates just-in-time authorization.
+  - Enhances workflow security by dynamically applying access controls.
+  - Ideal for environments where permissions need to adapt quickly to changes.
+
+: Temporal can help not just with this but for Authorization as well ..
+
+.image images/temporal.png 450 750
+
+## Demo
+
+- Dynamic "Just-In-Time" access to secret document
+
+- Run `make start-server` -> http://localhost:8888/demo/debug/
+
+.image images/demo.png
+
+## Demo - Temp Access + Remove Access Flow
+
+.image images/temporal-event-history.png 220 650
+.image images/temporal-temp-access.png 300 650
+
+## Demo - Activity Details
+
+.image images/temporal-details-add-access.png 250 600
+.image images/temporal-details-remove-access.png 250 600
+
+## Alternatives - Authorization
+
+- Cedar (supported by AWS) - https://www.cedarpolicy.com/en
+- Permify - https://permify.co/
+- Permit.io (Commercial) - https://www.permit.io/
+
+## Alternatives - Durable Execution
+
+Crowded market ... who wins? Who has best DX?
+
+- Restate (Rust)
+- Inngest (JS)
+- Golem Cloud (WASM)
+- LittleHorse (Rust/Kafka)
+- Cloudflare Durable Execution (Coming sooon..)
+
+## Q&A
+
+- Repo + slides: https://github.com/leowmjw/go-enterprise
+- Deep dive into code.  Just ask
+- Any other Enterprise topics to discuss?
