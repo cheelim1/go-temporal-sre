@@ -1,6 +1,9 @@
 package batch
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -31,18 +34,41 @@ func TestNonIdempotency(t *testing.T) {
 	var responses [2]*http.Response
 	var durations [2]time.Duration
 	var errors [2]error
+	var responseData [2]FeeDeductionResponse
+
+	// Create the request payload
+	payload := FeeDeductionRequest{
+		AccountID: accountID,
+		Amount:    10.0, // USD 10
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("Failed to marshal request payload: %v", err)
+	}
 
 	// Function to make a request
 	makeRequest := func(index int) {
 		defer wg.Done()
 		
 		start := time.Now()
-		resp, err := http.Post(server.URL+"/deduct-fee/"+orderID, "application/json", nil)
+		resp, err := http.Post(
+			server.URL+"/deduct-fee/"+orderID, 
+			"application/json", 
+			bytes.NewBuffer(payloadBytes),
+		)
 		duration := time.Since(start)
 		
 		responses[index] = resp
 		durations[index] = duration
 		errors[index] = err
+		
+		// Parse response body if no error
+		if err == nil && resp != nil {
+			body, readErr := io.ReadAll(resp.Body)
+			if readErr == nil {
+				json.Unmarshal(body, &responseData[index])
+			}
+		}
 	}
 
 	// Start the overall timer
@@ -75,6 +101,11 @@ func TestNonIdempotency(t *testing.T) {
 				i+1, resp.StatusCode, http.StatusOK)
 		}
 		defer resp.Body.Close()
+		
+		// Verify response data
+		if !responseData[i].Success {
+			t.Fatalf("Request %d reported failure: %s", i+1, responseData[i].Message)
+		}
 	}
 
 	// Check the final account balance
