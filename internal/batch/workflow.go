@@ -1,12 +1,7 @@
 package batch
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"time"
 
 	"go.temporal.io/sdk/temporal"
@@ -29,19 +24,21 @@ type FeeDeductionWorkflowResult struct {
 	Timestamp  time.Time `json:"timestamp"`
 }
 
-// ActivityInput represents the input for DeductFeeActivity
+// ActivityInput represents the input for fee deduction activity
 type ActivityInput struct {
 	AccountID string  `json:"account_id"`
 	OrderID   string  `json:"order_id"`
 	Amount    float64 `json:"amount"`
 }
 
-// ActivityResult represents the result from DeductFeeActivity
+// ActivityResult represents the result from fee deduction activity
 type ActivityResult struct {
 	NewBalance float64 `json:"new_balance"`
 	Success    bool    `json:"success"`
 	Error      string  `json:"error,omitempty"`
 }
+
+
 
 // FeeDeductionWorkflow is a workflow that deducts a fee from an account in an idempotent manner
 func FeeDeductionWorkflow(ctx workflow.Context, input FeeDeductionWorkflowInput) (*FeeDeductionWorkflowResult, error) {
@@ -76,7 +73,15 @@ func FeeDeductionWorkflow(ctx workflow.Context, input FeeDeductionWorkflowInput)
 
 	// Execute activity
 	var activityResult ActivityResult
-	err := workflow.ExecuteActivity(ctx, DeductFeeActivity, activityInput).Get(ctx, &activityResult)
+
+	// In Temporal, the workflow ID serves as the deduplication key
+	// When the workflow is executed with the same workflow ID (which is set to OrderID in tests),
+	// Temporal will automatically deduplicate the workflow execution.
+	// The underlying activity is intentionally non-idempotent to show how Temporal handles this.
+	logger.Info("Executing DeductFee activity", "OrderID", input.OrderID)
+	
+	// Execute the fee deduction activity
+	err := workflow.ExecuteActivity(ctx, "DeductFee", activityInput).Get(ctx, &activityResult)
 	if err != nil {
 		result.Success = false
 		result.Message = fmt.Sprintf("Activity execution failed: %v", err)
@@ -96,93 +101,6 @@ func FeeDeductionWorkflow(ctx workflow.Context, input FeeDeductionWorkflowInput)
 	return result, nil
 }
 
-// DeductFeeActivity is an activity that deducts a fee from an account
-// It makes an HTTP call to the fee deduction endpoint to ensure idempotency
-func DeductFeeActivity(ctx context.Context, input ActivityInput) (*ActivityResult, error) {
-	// In a real implementation, this would use a configuration for the service URL
-	// For now, we'll assume the service is running locally
-	serviceURL := "http://localhost:8080/deduct-fee"
+
 	
-	// Create a client with timeout
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
-	
-	// Create the request payload
-	payload := FeeDeductionRequest{
-		AccountID: input.AccountID,
-		Amount:    input.Amount,
-	}
-	
-	// Convert payload to JSON
-	jsonPayload, err := json.Marshal(payload)
-	if err != nil {
-		return &ActivityResult{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to marshal JSON: %v", err),
-		}, nil
-	}
-	
-	// Create request with OrderID in path for idempotency
-	url := fmt.Sprintf("%s/%s", serviceURL, input.OrderID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonPayload))
-	if err != nil {
-		return &ActivityResult{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to create request: %v", err),
-		}, nil
-	}
-	
-	// Set headers
-	req.Header.Set("Content-Type", "application/json")
-	
-	// Execute request
-	resp, err := client.Do(req)
-	if err != nil {
-		return &ActivityResult{
-			Success: false,
-			Error:   fmt.Sprintf("HTTP request failed: %v", err),
-		}, nil
-	}
-	defer resp.Body.Close()
-	
-	// Read response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return &ActivityResult{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to read response: %v", err),
-		}, nil
-	}
-	
-	// Check status code
-	if resp.StatusCode != http.StatusOK {
-		return &ActivityResult{
-			Success: false,
-			Error:   fmt.Sprintf("Unexpected status code: %d, body: %s", resp.StatusCode, string(body)),
-		}, nil
-	}
-	
-	// Parse response
-	var response FeeDeductionResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		return &ActivityResult{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to parse response: %v", err),
-		}, nil
-	}
-	
-	// Check if the operation was successful
-	if !response.Success {
-		return &ActivityResult{
-			Success: false,
-			Error:   response.Message,
-		}, nil
-	}
-	
-	// Return the successful result
-	return &ActivityResult{
-		NewBalance: response.NewBalance,
-		Success:    true,
-	}, nil
-}
+

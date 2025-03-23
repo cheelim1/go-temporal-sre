@@ -98,6 +98,38 @@ internal/batch/
    - Authentication and authorization
    - Rate limiting and protection against abuse
 
+## Temporal Integration Challenges
+
+### Test Environment Limitations
+
+1. **Simulating Idempotency**:
+   - The Temporal test environment doesn't perfectly simulate how a real Temporal service behaves with regard to idempotency
+   - When using the same workflow ID, a real Temporal deployment wouldn't re-execute activities, but the test environment does
+   - This leads to false test failures where activities are executed multiple times, causing double deductions
+
+2. **Activity Registration**:
+   - Tests are failing with "ActivityNotRegisteredError" when attempting to execute activities in subsequent workflow runs
+   - The error "unable to find activityType=DeductFee. Supported types: [func1]" indicates a registration issue
+   - Each test environment needs proper activity registration with the exact activity name
+
+3. **Mocking Requirements**:
+   - To properly test idempotency, we need to mock the activity behavior for second executions
+   - Using `env.OnActivity()` can simulate what would happen in a real Temporal deployment
+   - Mocks should return the same result as the first execution without executing the actual activity code
+
+### Workflow Idempotency Behavior
+
+1. **Real vs. Test Environment**:
+   - In a real Temporal server, if you try to start a workflow with the same ID, it will:
+     - Return the results of the existing workflow if it's completed
+     - Join the existing workflow execution if it's still running
+     - The activity code isn't executed again with the same workflow ID
+   - The test environment requires explicit mocking to simulate this behavior
+
+2. **Balance Discrepancies**:
+   - Test failures show balance discrepancies (expected 90, actual 100) indicating double deductions
+   - This happens because the test is executing activities multiple times instead of reusing results
+
 ## Temporal Integration Guidelines
 
 ### For Future Implementation

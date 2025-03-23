@@ -29,6 +29,14 @@ func NewAccountStore() *AccountStore {
 	}
 }
 
+// AccountExists checks if an account exists in the store
+func (s *AccountStore) AccountExists(accountID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, exists := s.accounts[accountID]
+	return exists
+}
+
 // GetAccount retrieves an account by ID
 func (s *AccountStore) GetAccount(id string) (*Account, error) {
 	s.mu.Lock()
@@ -172,7 +180,7 @@ func respondWithJSON(w http.ResponseWriter, data interface{}, statusCode int) {
 	if err != nil {
 		// If we can't marshal the response, fall back to a simple error
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, `{"success":false,"message":"Internal server error"}`) 
+		fmt.Fprintf(w, `{"success":false,"message":"Internal server error"}`)
 		return
 	}
 	w.Write(responseJSON)
