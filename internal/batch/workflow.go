@@ -1,7 +1,6 @@
 package batch
 
 import (
-	"fmt"
 	"time"
 
 	"go.temporal.io/sdk/temporal"
@@ -38,22 +37,20 @@ type ActivityResult struct {
 	Error      string  `json:"error,omitempty"`
 }
 
-
-
 // FeeDeductionWorkflow is a workflow that deducts a fee from an account in an idempotent manner
 func FeeDeductionWorkflow(ctx workflow.Context, input FeeDeductionWorkflowInput) (*FeeDeductionWorkflowResult, error) {
 	// Logger
 	logger := workflow.GetLogger(ctx)
 	logger.Info("FeeDeductionWorkflow started", "OrderID", input.OrderID)
 
-	// Activity options
+	// Activity options - 1 time only as script is not idempotent
 	activityOpts := workflow.ActivityOptions{
 		StartToCloseTimeout: 10 * time.Second,
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval:    time.Second,
 			BackoffCoefficient: 2.0,
 			MaximumInterval:    time.Minute,
-			MaximumAttempts:    3,
+			MaximumAttempts:    1,
 		},
 	}
 	ctx = workflow.WithActivityOptions(ctx, activityOpts)
@@ -65,42 +62,39 @@ func FeeDeductionWorkflow(ctx workflow.Context, input FeeDeductionWorkflowInput)
 	}
 
 	// Prepare activity input
-	activityInput := ActivityInput{
-		AccountID: input.AccountID,
-		OrderID:   input.OrderID,
-		Amount:    input.Amount,
-	}
+	//activityInput := ActivityInput{
+	//	AccountID: input.AccountID,
+	//	OrderID:   input.OrderID,
+	//	Amount:    input.Amount,
+	//}
 
 	// Execute activity
-	var activityResult ActivityResult
+	//var activityResult ActivityResult
 
 	// In Temporal, the workflow ID serves as the deduplication key
 	// When the workflow is executed with the same workflow ID (which is set to OrderID in tests),
 	// Temporal will automatically deduplicate the workflow execution.
 	// The underlying activity is intentionally non-idempotent to show how Temporal handles this.
 	logger.Info("Executing DeductFee activity", "OrderID", input.OrderID)
-	
-	// Execute the fee deduction activity
-	err := workflow.ExecuteActivity(ctx, "DeductFee", activityInput).Get(ctx, &activityResult)
-	if err != nil {
-		result.Success = false
-		result.Message = fmt.Sprintf("Activity execution failed: %v", err)
-		return result, err
-	}
 
-	// Set the result based on activity result
-	result.NewBalance = activityResult.NewBalance
-	result.Success = activityResult.Success
-	if !activityResult.Success {
-		result.Message = activityResult.Error
-	} else {
-		result.Message = "Fee deduction successful"
-	}
+	workflow.ExecuteActivity(ctx, BasicActivity)
+	// Execute the fee deduction activity
+	//err := workflow.ExecuteActivity(ctx, "DeductFeeActivity", activityInput).Get(ctx, &activityResult)
+	//if err != nil {
+	//	result.Success = false
+	//	result.Message = fmt.Sprintf("Activity execution failed: %v", err)
+	//	return result, err
+	//}
+	//
+	//// Set the result based on activity result
+	//result.NewBalance = activityResult.NewBalance
+	//result.Success = activityResult.Success
+	//if !activityResult.Success {
+	//	result.Message = activityResult.Error
+	//} else {
+	//	result.Message = "Fee deduction successful"
+	//}
 
 	logger.Info("FeeDeductionWorkflow completed", "OrderID", input.OrderID, "Success", result.Success)
 	return result, nil
 }
-
-
-	
-

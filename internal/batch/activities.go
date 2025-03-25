@@ -1,8 +1,10 @@
 package batch
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"io"
 	"math/rand"
 	"net/http"
@@ -20,6 +22,13 @@ type Account struct {
 type AccountStore struct {
 	mu       sync.Mutex
 	accounts map[string]*Account
+}
+
+func BasicActivity(ctx context.Context, input ActivityInput) (*ActivityResult, error) {
+	fmt.Println("Inside ACT - BasicActivity")
+	spew.Dump(input)
+
+	return nil, nil
 }
 
 // NewAccountStore creates a new account store
@@ -101,7 +110,7 @@ type FeeDeductionResponse struct {
 	Message    string  `json:"message,omitempty"`
 }
 
-// HTTPHandler returns a handler for the DeductFee endpoint
+// DeductFeeHTTPHandler returns a handler for the DeductFee endpoint
 func DeductFeeHTTPHandler(store *AccountStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Set content type for all responses
