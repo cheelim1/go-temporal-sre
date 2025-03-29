@@ -1,10 +1,8 @@
 package batch
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"io"
 	"math/rand"
 	"net/http"
@@ -24,12 +22,7 @@ type AccountStore struct {
 	accounts map[string]*Account
 }
 
-func BasicActivity(ctx context.Context, input ActivityInput) (*ActivityResult, error) {
-	fmt.Println("Inside ACT - BasicActivity")
-	spew.Dump(input)
-
-	return nil, nil
-}
+type BatchActivities struct{}
 
 // NewAccountStore creates a new account store
 func NewAccountStore() *AccountStore {

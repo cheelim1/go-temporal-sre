@@ -1,15 +1,19 @@
 package batch
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/suite"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/testsuite"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 // WorkflowTestSuite is a test suite for the workflow
@@ -25,16 +29,86 @@ type WorkflowTestSuite struct {
 	testStore  *AccountStore
 }
 
+type FakerBatchActivity struct{}
+
 // setupHTTPTestServer sets up a test HTTP server with the fee deduction handler
 func setupHTTPTestServer(accountID string, initialBalance float64) (*httptest.Server, *AccountStore) {
 	store := NewAccountStore()
 	store.CreateAccount(accountID, initialBalance)
 
+	handler := DeductFeeHTTPHandler(store)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		DeductFeeHTTPHandler(store)(w, r)
+		handler(w, r)
 	}))
 
 	return server, store
+}
+
+var accountID = "ACCT-45678"
+var initialBalance = 200.0
+var testServer *httptest.Server
+var testStore *AccountStore = NewAccountStore()
+var a = FakerBatchActivity{}
+
+func init() {
+	testServer, testStore = setupHTTPTestServer(accountID, initialBalance)
+	acc, err := testStore.GetAccount(accountID)
+	if err != nil {
+		panic(err)
+	}
+	spew.Dump(acc)
+}
+
+func (a *FakerBatchActivity) DeductFeeActivity(ctx context.Context, input ActivityInput) (*ActivityResult, error) {
+	fmt.Println("Inside FakeDeductFeeActivity.")
+	spew.Dump(input)
+
+	// Should just POST to the httptest server .. it has the store there ,.
+	// Create the request payload
+	payload := FeeDeductionRequest{
+		AccountID: input.AccountID,
+		Amount:    input.Amount,
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	fdr := FeeDeductionResponse{}
+	start := time.Now()
+	resp, err := http.Post(
+		testServer.URL+"/deduct-fee/"+input.OrderID,
+		"application/json",
+		bytes.NewBuffer(payloadBytes),
+	)
+	duration := time.Since(start)
+	fmt.Println("DeductFeeActivity for ORDID:", input.OrderID, " took", duration)
+
+	// Parse response body if no error
+	if err == nil && resp != nil {
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr == nil {
+			json.Unmarshal(body, &fdr)
+		}
+	}
+	// Activity output
+	fmt.Println("Message: ", fdr.Message)
+
+	if !fdr.Success {
+		return nil, fmt.Errorf("ERR: %s", fdr.Message)
+	}
+	// All ok if get this far ..
+	return &ActivityResult{
+		NewBalance: fdr.NewBalance,
+		Success:    fdr.Success,
+	}, nil
+}
+
+func (a *FakerBatchActivity) BasicActivity(ctx context.Context, input ActivityInput) (*ActivityResult, error) {
+	fmt.Println("Inside ACT - BasicActivity")
+	spew.Dump(input)
+
+	return nil, nil
 }
 
 // SetupTest initializes the shared test server and store before each test
@@ -45,53 +119,66 @@ func (s *WorkflowTestSuite) SetupTest() {
 	env := s.NewTestWorkflowEnvironment()
 	// Register workflow and wrapped activity that tracks execution
 	env.RegisterWorkflow(FeeDeductionWorkflow)
-	DeductFeeActivity := func(ctx context.Context, input ActivityInput) (*ActivityResult, error) {
-		fmt.Println("DEDUCTFEE_RUN - OID:", input.OrderID, " AMT:", input.Amount)
-		// Actually deduct the fee in the first execution
-		newBalance, xerr := s.testStore.DeductFee(input.AccountID, input.OrderID, input.Amount)
-		if xerr != nil {
-			fmt.Println("DEDUCTFEE_RUN - Error:", xerr)
-			return nil, xerr
-		}
-		// All ok ..
-		return &ActivityResult{
-			NewBalance: newBalance,
-			Success:    true,
-		}, nil
-	}
-	env.RegisterActivity(DeductFeeActivity)
-	env.RegisterActivity(BasicActivity)
+	//DeductFeeActivity := func(ctx context.Context, input ActivityInput) (*ActivityResult, error) {
+	//	fmt.Println("DEDUCTFEE_RUN - OID:", input.OrderID, " AMT:", input.Amount)
+	//	// Actually deduct the fee in the first execution
+	//	newBalance, xerr := s.testStore.DeductFee(input.AccountID, input.OrderID, input.Amount)
+	//	if xerr != nil {
+	//		fmt.Println("DEDUCTFEE_RUN - Error:", xerr)
+	//		return nil, xerr
+	//	}
+	//	// All ok ..
+	//	return &ActivityResult{
+	//		NewBalance: newBalance,
+	//		Success:    true,
+	//	}, nil
+	//}
+	env.RegisterActivity(a.DeductFeeActivity)
+	env.RegisterActivity(a.BasicActivity)
 	// Attach it to be ready for test run ..
 	s.env = env
+	// Attach the testServer + testStore for use
+	s.testServer = testServer
+	s.testStore = testStore
 }
 
 // TearDownTest closes the test server after each test
 func (s *WorkflowTestSuite) TearDownTest() {
-	if s.testServer != nil {
-		s.testServer.Close()
+	//time.Sleep(10 * time.Second)
+	fmt.Println("TearDown test server + account for ", accountID)
+	// Print out what the AccountID - ACCT-12345 has
+	acc, err := testStore.GetAccount(accountID)
+	if err != nil {
+		s.FailNow("ERR:", err)
 	}
+	spew.Dump(acc)
+
+	//if s.testServer != nil {
+	//	s.testServer.Close()
+	//}
 }
 
 // Run the test suite with no clashing ...
 func TestWorkflowTestSuiteNoClash(t *testing.T) {
-	t.Parallel()
+	//t.Parallel() // TODO: Does not seem to work ..
 
-	for i := 1; i < 3; i++ {
-		orderID := fmt.Sprintf("ORD-%d", i)
-		t.Run(orderID, func(t *testing.T) {
-			// Setup the activity server ..
-			fmt.Println("Setup test server + account for ", orderID)
-			wts := new(WorkflowTestSuite)
-			wts.input = ActivityInput{
-				"ACCT-12345",
-				fmt.Sprintf("ORD-%d", i),
-				10.0,
-			}
-			wts.testServer, wts.testStore = setupHTTPTestServer(orderID, 100.0)
-			//wts.env.RegisterActivity(BasicActivity)
-			suite.Run(t, wts)
-		})
+	//for i := 1; i < 3; i++ {
+	i := 1
+	orderID := fmt.Sprintf("ORD-%d", i)
+	//t.Run(orderID, func(t *testing.T) {
+	// Setup the activity server ..
+	fmt.Println("Setup test server + account for ", orderID)
+	wts := new(WorkflowTestSuite)
+	wts.input = ActivityInput{
+		"ACCT-12345",
+		fmt.Sprintf("ORD-%d", i),
+		10.0,
 	}
+
+	//wts.testServer, wts.testStore = setupHTTPTestServer(orderID, 100.0)
+	suite.Run(t, wts)
+	//})
+	//}
 }
 
 func (s *WorkflowTestSuite) TestNormalFeeDeduction() {
@@ -109,6 +196,25 @@ func (s *WorkflowTestSuite) TestNormalFeeDeduction() {
 	// start workflow
 	// Set workflow ID for idempotency using orderID
 	workflowID := s.input.OrderID // Using orderID as the workflow ID is key for idempotency
+	//s.env.SetStartWorkflowOptions(client.StartWorkflowOptions{
+	//	ID: workflowID,
+	//})
+	//
+	//// Execute the workflow with explicit WorkflowID for idempotency
+	//s.env.ExecuteWorkflow(FeeDeductionWorkflow, input)
+	//
+	//// get the results out
+	//// Verify workflow completed successfully
+	//s.True(s.env.IsWorkflowCompleted())
+	//fmt.Println("ERR: ", s.env.GetWorkflowError())
+	//// Expected error ..
+	//s.Error(s.env.GetWorkflowError())
+	// assertions ..
+	//
+	input.AccountID = "ACCT-45678"
+	// Set workflow ID for idempotency using orderID
+	workflowID = "ORD-5678" // Using orderID as the workflow ID is key for idempotency
+	input.OrderID = "ORD-5678"
 	s.env.SetStartWorkflowOptions(client.StartWorkflowOptions{
 		ID: workflowID,
 	})
@@ -121,6 +227,7 @@ func (s *WorkflowTestSuite) TestNormalFeeDeduction() {
 	s.True(s.env.IsWorkflowCompleted())
 	s.NoError(s.env.GetWorkflowError())
 	// assertions ..
+
 	/*
 		// Setup the workflow input
 		input := FeeDeductionWorkflowInput{

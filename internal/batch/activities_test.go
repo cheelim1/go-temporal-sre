@@ -14,7 +14,7 @@ import (
 func TestNonIdempotency(t *testing.T) {
 	// Create a new account store and initialize an account with USD 100
 	store := NewAccountStore()
-	accountID := "ACCT-12345"
+	accountID := "ACCT-45678"
 	orderID := "ORD-12345"
 	initialBalance := 100.0
 	store.CreateAccount(accountID, initialBalance)
@@ -49,19 +49,19 @@ func TestNonIdempotency(t *testing.T) {
 	// Function to make a request
 	makeRequest := func(index int) {
 		defer wg.Done()
-		
+
 		start := time.Now()
 		resp, err := http.Post(
-			server.URL+"/deduct-fee/"+orderID, 
-			"application/json", 
+			server.URL+"/deduct-fee/"+orderID,
+			"application/json",
 			bytes.NewBuffer(payloadBytes),
 		)
 		duration := time.Since(start)
-		
+
 		responses[index] = resp
 		durations[index] = duration
 		errors[index] = err
-		
+
 		// Parse response body if no error
 		if err == nil && resp != nil {
 			body, readErr := io.ReadAll(resp.Body)
@@ -97,11 +97,11 @@ func TestNonIdempotency(t *testing.T) {
 	// Check if both responses are OK (HTTP 200)
 	for i, resp := range responses {
 		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("Request %d returned status code %d, expected %d", 
+			t.Fatalf("Request %d returned status code %d, expected %d",
 				i+1, resp.StatusCode, http.StatusOK)
 		}
 		defer resp.Body.Close()
-		
+
 		// Verify response data
 		if !responseData[i].Success {
 			t.Fatalf("Request %d reported failure: %s", i+1, responseData[i].Message)

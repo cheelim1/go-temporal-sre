@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+// Happy path
+
 func TestDataEnrichmentWorkflow(t *testing.T) {
 	type args struct {
 		ctx       workflow.Context
