@@ -7,6 +7,7 @@
 *.dll
 *.so
 *.dylib
+local_temporal.db
 
 # Test binary, built with `go test -c`
 *.test
@@ -22,7 +23,9 @@ go.work
 go.work.sum
 
 # env file
-.env
+*.env
+demo/jit/demo-be/.env.local
+
 
 # Ignore Direnv
 .envrc*
