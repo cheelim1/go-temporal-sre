@@ -38,7 +38,7 @@ if "current_role" in st.session_state and "built_in_roles" in st.session_state:
     
     new_role = st.selectbox("Select the new role you want to request:", available_roles)
     reason = st.text_area("Reason for access:")
-    duration = st.selectbox("Select duration of access:", ["5m", "15m", "30m", "1h"])
+    duration = st.selectbox("Select duration of access:", ["3m", "5m", "15m", "1h"])
     
     if st.button("Submit JIT Request"):
         # Double-check that the new role is different (should be true)
