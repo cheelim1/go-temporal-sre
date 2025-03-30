@@ -1,21 +1,103 @@
 package main
 
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
+	"go.temporal.io/sdk/client"
+)
+
+// logAdapter is a simple adapter that implements the Temporal logger interface
+type logAdapter struct {
+	logger *log.Logger
+}
+
+// Debug logs a debug message
+func (l *logAdapter) Debug(msg string, keyvals ...interface{}) {
+	l.logger.Printf("[DEBUG] %s %v", msg, keyvals)
+}
+
+// Info logs an info message
+func (l *logAdapter) Info(msg string, keyvals ...interface{}) {
+	l.logger.Printf("[INFO] %s %v", msg, keyvals)
+}
+
+// Warn logs a warning message
+func (l *logAdapter) Warn(msg string, keyvals ...interface{}) {
+	l.logger.Printf("[WARN] %s %v", msg, keyvals)
+}
+
+// Error logs an error message
+func (l *logAdapter) Error(msg string, keyvals ...interface{}) {
+	l.logger.Printf("[ERROR] %s %v", msg, keyvals)
+}
+
 func main() {
 	fmt.Println("Welcome to superscript!")
 	Run()
-
 }
 
 func Run() {
+	// Create a basic logger - we'll use a simple adapter for standard logger
+	logger := &logAdapter{log.New(os.Stdout, "[SuperScript] ", log.LstdFlags)}
+	logger.Info("Starting SuperScript application")
 
-	// Register Temporal Client ..
+	// Create Temporal client
+	clientOptions := client.Options{
+		HostPort:  "localhost:7233",
+		Namespace: "default",
+		Logger:    logger,
+	}
 
-	// Spawn off worker; start it
+	tempClient, err := client.Dial(clientOptions)
+	if err != nil {
+		logger.Error("Unable to create Temporal client", "error", err)
+		os.Exit(1)
+	}
+	defer tempClient.Close()
 
-	// Have a HTTP Handler; blocking
-		
-	// Block on ctrl-c to interrupt
-	// Stop worker, http gracefully
+	// Start worker
+	worker := NewWorker(tempClient, logger)
+	if err := worker.Start(); err != nil {
+		logger.Error("Unable to start worker", "error", err)
+		os.Exit(1)
+	}
 
-	// os.exit
+	// Start HTTP server
+	server := NewServer(tempClient, logger, ":8080")
+	
+	// Start server in a goroutine so we can handle graceful shutdown
+	go func() {
+		if err := server.Start(); err != nil && err != http.ErrServerClosed {
+			logger.Error("HTTP server failed", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	fmt.Println("SuperScript system is ready!")
+	fmt.Println("HTTP Server running at http://localhost:8080")
+	fmt.Println("Press Ctrl+C to exit...")
+	
+	// Wait for interrupt signal
+	WaitForInterrupt()
+	
+	// Shutdown gracefully
+	fmt.Println("\nShutting down gracefully...")
+	
+	// Stop HTTP server
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Stop(ctx); err != nil {
+		logger.Error("Error stopping HTTP server", "error", err)
+	}
+	
+	// Stop worker
+	worker.Stop()
+	
+	fmt.Println("Shutdown complete")
+	os.Exit(0)
 }

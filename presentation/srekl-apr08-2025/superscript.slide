@@ -1,0 +1,240 @@
+Making Non-Idempotent Scripts Idempotent with Temporal
+SRE Knowledge Sharing
+April 8, 2025
+Tags: temporal, idempotency, sre, workflows
+
+* * *
+
+# The Problem: Non-Idempotent Scripts
+
+.image images/non-idempotent-script.png 400 _
+
+- Legacy bash scripts often lack idempotency guarantees
+- Running the same script multiple times can cause duplicate operations
+- Common SRE pain points:
+  - Double billing customers
+  - Duplicate resource provisioning
+  - Inconsistent state
+  - Race conditions during concurrent execution
+
+* * *
+
+# What is Idempotency?
+
+.image images/idempotency-concept.png 400 _
+
+- An operation is idempotent if running it multiple times has the same effect as running it once
+- Critical for reliable systems, especially during:
+  - Retries after failures
+  - Duplicate requests
+  - Recovery scenarios
+  - Concurrent execution
+
+* * *
+
+# Traditional Approaches to Idempotency
+
+- Tracking execution state in a database
+- Using distributed locks
+- Implementing custom deduplication logic
+- Adding unique request IDs
+
+Challenges:
+- Complex to implement correctly
+- Error-prone
+- Requires significant boilerplate code
+- Difficult to maintain and test
+
+* * *
+
+# Introducing Temporal
+
+.image images/temporal-logo.png 300 _
+
+- Open-source microservice orchestration platform
+- Provides durable execution guarantees
+- Built-in support for idempotency
+- Handles retries, timeouts, and failure recovery
+- Language-agnostic (Go, Java, TypeScript, PHP, etc.)
+
+* * *
+
+# SuperScript: Our Solution
+
+.image images/superscript-architecture.png 450 _
+
+A system that wraps non-idempotent bash scripts in Temporal workflows:
+
+1. HTTP API receives requests
+2. Temporal workflows coordinate execution
+3. Activities execute the actual scripts
+4. Idempotency guaranteed by Temporal's WorkflowID mechanism
+
+* * *
+
+# The Implementation: Workflow Layer
+
+```go
+// SinglePaymentCollectionWorkflow ensures idempotent execution
+func SinglePaymentCollectionWorkflow(ctx workflow.Context, params SinglePaymentWorkflowParams) (PaymentResult, error) {
+    logger := workflow.GetLogger(ctx)
+    logger.Info("Starting SinglePaymentCollectionWorkflow", "orderID", params.OrderID)
+    
+    var result PaymentResult
+    
+    // Execute the script through an activity
+    err := workflow.ExecuteActivity(ctx, Activities.RunPaymentCollectionScript, params.OrderID).Get(ctx, &result)
+    if err != nil {
+        return PaymentResult{}, err
+    }
+    
+    return result, nil
+}
+```
+
+* * *
+
+# The Implementation: Activity Layer
+
+```go
+// RunPaymentCollectionScript executes the non-idempotent script
+func (a *Activities) RunPaymentCollectionScript(ctx context.Context, orderID string) (PaymentResult, error) {
+    logger := a.logger.With("activity", "RunPaymentCollectionScript", "orderID", orderID)
+    logger.Info("Running payment collection script")
+    
+    // Execute the bash script using bitfield/script
+    execPipe := script.Exec("./scripts/payment_collection.sh " + orderID)
+    
+    // Capture output and handle errors
+    output, err := execPipe.String()
+    if err != nil {
+        logger.Error("Script execution failed", "error", err)
+        return PaymentResult{}, err
+    }
+    
+    return PaymentResult{OrderID: orderID, Output: output}, nil
+}
+```
+
+* * *
+
+# The Magic: WorkflowID Reuse Policy
+
+.image images/workflow-deduplication.png 400 _
+
+```go
+// In HTTP handler
+workflowOptions := client.StartWorkflowOptions{
+    ID:                  "payment-" + orderID,  // Unique ID based on order
+    TaskQueue:           "superscript",
+    WorkflowRunTimeout:  time.Minute * 10,
+    // This is the key to idempotency!
+    WorkflowIDReusePolicy: enums.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE,
+}
+```
+
+* * *
+
+# Proving Idempotency
+
+.image images/idempotency-proof.png 400 _
+
+Our tests show:
+- 5 concurrent clients attempt to start workflows with the same WorkflowID
+- All clients receive workflow handles with the same RunID
+- The script is executed exactly once
+- All clients retrieve identical results
+
+* * *
+
+# Orchestrating Multiple Scripts
+
+```go
+// OrchestratorWorkflow manages multiple child workflows
+func OrchestratorWorkflow(ctx workflow.Context, params BatchWorkflowParams) (BatchResult, error) {
+    logger := workflow.GetLogger(ctx)
+    logger.Info("Starting OrchestratorWorkflow", "orderCount", len(params.OrderIDs))
+    
+    var results []PaymentResult
+    
+    // Process each order with its own child workflow
+    for _, orderID := range params.OrderIDs {
+        var result PaymentResult
+        childWorkflowID := "payment-" + orderID
+        
+        childCtx := workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
+            WorkflowID:            childWorkflowID,
+            WorkflowIDReusePolicy: enums.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE,
+        })
+        
+        err := workflow.ExecuteChildWorkflow(childCtx, SinglePaymentCollectionWorkflow, 
+                                           SinglePaymentWorkflowParams{OrderID: orderID}).Get(childCtx, &result)
+        if err != nil {
+            // Handle errors but continue processing other orders
+            logger.Error("Child workflow failed", "orderID", orderID, "error", err)
+            continue
+        }
+        
+        results = append(results, result)
+    }
+    
+    return BatchResult{Results: results}, nil
+}
+```
+
+* * *
+
+# Benefits for SRE
+
+.image images/sre-visibility.png 400 _
+
+- **Reliability**: Guaranteed exactly-once execution semantics
+- **Visibility**: Full execution history and debugging capabilities
+- **Resilience**: Automatic retries and failure handling
+- **Scalability**: Easily process thousands of workflows
+- **Maintainability**: Clean separation of concerns
+
+* * *
+
+# Demo: See It In Action
+
+Three terminal setup:
+
+1. **Terminal 1**: Run Temporal server
+   ```bash
+   make start-temporal
+   ```
+
+2. **Terminal 2**: Run SuperScript application
+   ```bash
+   make superscript-demo-1  # Build
+   make superscript-start    # Start application
+   ```
+
+3. **Terminal 3**: Run demo scripts
+   ```bash
+   make superscript-demo-2  # Non-idempotent script
+   make superscript-demo-3  # Idempotent workflow
+   make superscript-demo-4  # Orchestrator workflow
+   ```
+
+* * *
+
+# Key Takeaways
+
+1. Non-idempotent scripts are a reliability risk
+2. Temporal provides a powerful framework for ensuring idempotency
+3. The WorkflowID is the key to preventing duplicate executions
+4. Parent-child workflow patterns enable complex orchestration
+5. SREs benefit from improved visibility and reliability
+
+* * *
+
+# Questions?
+
+.image images/questions.png 450 _
+
+Resources:
+- [Temporal Documentation](https://docs.temporal.io/)
+- [Project Code](https://github.com/cheelim1/go-temporal-sre)
+- [Idempotency Patterns](https://temporal.io/blog/idempotency)

@@ -12,10 +12,20 @@ cmd/superscript |
     -- main.go <-- main Run loop here; for demo run concurrent http + worker
     -- http.go <-- HTTP handler here
     -- worker.go <-- Worker code here; including any activities setup
+
 internal/superscript |
+    -- SCENARIO.md <-- this file; high level objective and expected output
     -- superscript.go <-- structs + shared models here 
     -- activities.go <-- Activities code here 
     -- workflow.go <-- Workflow code here
+    -- scripts <-- All non-idempotent scripts here
+
+## Standards
+
+  - Use Golang v1.24.1 standard libs + idioms as much as possible
+  - Review example of script wrapper library; use its example as much as possible when executing the bash script - https://github.com/bitfield/script
+  - Use idiomatic Temporal patterns as much as possible
+  - Make code easily readable; be exact and clear; do not be clever
 
 ## Make single script to be Idempotent
 
@@ -48,7 +58,7 @@ internal/superscript |
 
 ## Demo
 
-- Output instructions of setup into a README.md file in same folder as this file
+- Output instructions of setup into a README.md file in same folder as this file.  Have the step-by-step to demo the following below items
 
 - Will first run the script ./scripts/traditional_payment_collection.sh a few times to demo that 
   non-idempotency will create undesired effects

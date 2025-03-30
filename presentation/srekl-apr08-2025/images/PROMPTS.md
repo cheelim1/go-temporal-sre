@@ -5,7 +5,19 @@ Use these prompts with DALL-E or ChatGPT's image generation to create visual aid
 ## double-billing.png
 
 **Prompt:**
+
 "A split-screen technical illustration showing a payment system failure scenario. On the left side, show a customer's account being charged twice for the same transaction. On the right side, show a stressed SRE engineer looking at error logs and multiple transaction records with identical IDs. Use a red color scheme to highlight the problem area, and include visual elements like duplicate transaction IDs, timestamps showing similar times, and a declining account balance. Style should be clean, professional, and suitable for a technical presentation."
+
+
+## non-idempotent-script.png
+
+**Prompt:**
+"A technical illustration showing the dangers of non-idempotent scripts in a payment processing system. Show multiple instances of the same bash script running simultaneously, each processing the same payment. Include visual elements like duplicate transaction records, a customer account being charged multiple times, and error logs. Use a red color scheme to highlight the problem areas. The style should be clean, professional infographic style with icons representing scripts, databases, and payment systems. Add small terminal windows showing script execution with timestamps that are very close to each other."
+
+## idempotency-concept.png
+
+**Prompt:**
+"A clean, technical infographic explaining the concept of idempotency. On the left side, show a non-idempotent operation with multiple executions leading to multiple different states (illustrated by different colored boxes). On the right side, show an idempotent operation with multiple executions all resulting in the same final state (illustrated by identical colored boxes). Use arrows to show the flow of operations and include mathematical notation f(f(x)) = f(x) somewhere in the image. Use a blue and green color scheme with clean lines and a minimalist style suitable for a technical SRE presentation."
 
 ## temporal-logo.png
 
@@ -13,6 +25,11 @@ Use these prompts with DALL-E or ChatGPT's image generation to create visual aid
 "The official Temporal logo on a clean background. The logo features a stylized infinity symbol in blue-green gradient colors. The image should be crisp, professional, and suitable for a technical presentation with ample whitespace around the logo."
 
 *Note: Instead of generating this, you may want to download the official logo from [Temporal's website](https://temporal.io/media-kit) for proper branding.*
+
+## superscript-architecture.png
+
+**Prompt:**
+"A technical architecture diagram showing how SuperScript wraps non-idempotent bash scripts in Temporal workflows. The diagram should include: an HTTP API layer receiving requests, a Temporal server handling workflow orchestration, workflow workers executing the workflows, and activities that wrap bash scripts. Use a flow diagram style with boxes for components and arrows showing the request flow. Include a client making multiple identical requests that get deduplicated. Use a professional blue and green color scheme with clean lines and minimal technical style. Add small icons representing each component (API, Temporal, scripts, etc.)."
 
 ## workflow-deduplication.png
 

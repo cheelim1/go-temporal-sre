@@ -26,6 +26,8 @@ go.work.sum
 *.env
 demo/jit/demo-be/.env.local
 
+# Ignore binary folder
+bin
 
 # Ignore Direnv
 .envrc*
