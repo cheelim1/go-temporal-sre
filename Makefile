@@ -20,3 +20,6 @@ start-temporal:
 stop:
 	@kill `pgrep temporal`
 
+run-script:
+	@echo "Demo non-Idempotent script. Do NOT run twice!!"
+	@cd ./internal/superscript/scripts && ./traditional_payment_collection.sh 
