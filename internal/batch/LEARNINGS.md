@@ -31,11 +31,15 @@ We've implemented a demonstration of non-idempotent transaction processing to il
 
 ```
 internal/batch/
-├── SCENARIO.md       # Requirements specification
-├── LEARNINGS.md      # This documentation file
-├── batch.go          # Package declaration (currently minimal)
-├── activities.go     # Core business logic and HTTP handlers
-└── activities_test.go # Test cases for the activities
+├── SCENARIO.md                # Requirements specification
+├── LEARNINGS.md               # This documentation file
+├── batch.go                   # Package declaration and basic types
+├── activities.go              # Core business logic (account operations)
+├── activities_test.go         # Tests for non-idempotent behavior
+├── integration_test.go        # HTTP handler tests
+├── workflow.go                # Temporal workflow and activity definitions
+├── temporal_idempotency_test.go # Tests demonstrating Temporal idempotency
+└── README.md                  # Project overview
 ```
 
 ## Go Idioms and Best Practices
@@ -98,61 +102,84 @@ internal/batch/
    - Authentication and authorization
    - Rate limiting and protection against abuse
 
-## Temporal Integration Challenges
+## Implemented Temporal Workflow Idempotency
 
-### Test Environment Limitations
+### Key Implementation Details
 
-1. **Simulating Idempotency**:
-   - The Temporal test environment doesn't perfectly simulate how a real Temporal service behaves with regard to idempotency
-   - When using the same workflow ID, a real Temporal deployment wouldn't re-execute activities, but the test environment does
-   - This leads to false test failures where activities are executed multiple times, causing double deductions
+1. **Real Temporal Server Approach**:
+   - We implemented idempotency testing using a real Temporal server (`testsuite.StartDevServer`) instead of the mocked test environment
+   - This approach demonstrates actual Temporal behavior rather than simulating it with mocks
+   - Using a real server validates that Temporal's guarantees work as expected in production scenarios
 
-2. **Activity Registration**:
-   - Tests are failing with "ActivityNotRegisteredError" when attempting to execute activities in subsequent workflow runs
-   - The error "unable to find activityType=DeductFee. Supported types: [func1]" indicates a registration issue
-   - Each test environment needs proper activity registration with the exact activity name
+2. **Idempotency Mechanism**:
+   - Implemented workflow idempotency using `WorkflowIDReusePolicy.REJECT_DUPLICATE`
+   - This configuration ensures that Temporal rejects attempts to start a workflow with a WorkflowID that already exists
+   - When multiple clients start a workflow with the same ID, they all receive workflow handles with the same RunID
+   - This shared RunID is proof that Temporal's idempotency is working correctly
 
-3. **Mocking Requirements**:
-   - To properly test idempotency, we need to mock the activity behavior for second executions
-   - Using `env.OnActivity()` can simulate what would happen in a real Temporal deployment
-   - Mocks should return the same result as the first execution without executing the actual activity code
+3. **Concurrent Workflow Execution**:
+   - Implemented a test with 5 concurrent clients attempting to start workflows with the same WorkflowID
+   - Used a barrier pattern to ensure truly concurrent execution attempts
+   - All clients successfully received workflow handles but with identical RunIDs
+   - The activity was executed exactly once despite multiple clients attempting execution
 
-### Workflow Idempotency Behavior
+4. **Validation Approach**:
+   - Verified idempotency by checking that:
+     - All clients received the same RunID
+     - The singleton account was modified exactly once
+     - The activity execution count was exactly 1
+     - All clients could retrieve the identical workflow result
+   - Used green-colored terminal output to highlight the critical proof of idempotency
 
-1. **Real vs. Test Environment**:
-   - In a real Temporal server, if you try to start a workflow with the same ID, it will:
-     - Return the results of the existing workflow if it's completed
-     - Join the existing workflow execution if it's still running
-     - The activity code isn't executed again with the same workflow ID
-   - The test environment requires explicit mocking to simulate this behavior
+### Important Temporal Idempotency Behaviors
 
-2. **Balance Discrepancies**:
-   - Test failures show balance discrepancies (expected 90, actual 100) indicating double deductions
-   - This happens because the test is executing activities multiple times instead of reusing results
+1. **RunID Significance**:
+   - When multiple clients attempt to start a workflow with the same WorkflowID, Temporal returns handles with the same RunID
+   - The identical RunID across clients confirms they're all accessing the same workflow execution
+   - This is different from the test environment where we had to manually mock this behavior
+
+2. **Activity Execution Guarantees**:
+   - With proper workflow ID reuse policy, activities within a workflow are guaranteed to execute exactly once
+   - This prevents issues like double charging or duplicate inventory changes
+   - All clients can retrieve the result once the workflow completes
+
+3. **Error Handling**:
+   - Clients that attempt to start a workflow with an existing ID receive `WorkflowExecutionAlreadyStarted` errors
+   - These errors can be caught and handled appropriately in production code
+   - The client can then use the existing workflow ID to get the result
+
+4. **Benefits Over HTTP Implementation**:
+   - The Temporal implementation solves the non-idempotent behavior seen in the HTTP implementation
+   - It prevents double fee deductions in high-concurrency scenarios without complex application logic
+   - The idempotency guarantee is provided by Temporal's infrastructure
 
 ## Temporal Integration Guidelines
 
-### For Future Implementation
+### Best Practices Based on Implementation
 
 1. **Workflow Structure**:
-   - Separate activities from workflows
-   - Keep activities pure and idempotent
-   - Use workflow ID for deduplication
+   - Separate activities from workflows for better testability and reuse
+   - Keep workflow functions focused on orchestration logic
+   - Use consistent workflow ID patterns that incorporate business identifiers (e.g., `"FEE-WF-" + orderID`)
+   - Set appropriate workflow timeouts based on expected execution time
 
 2. **Activity Design**:
-   - Create self-contained, reusable activities
-   - Use activity options (StartToCloseTimeout, RetryPolicy)
-   - Consider using activity heartbeating for long-running operations
+   - Create self-contained, reusable activities with clear input/output contracts
+   - Use activity options (StartToCloseTimeout, RetryPolicy) for reliability
+   - Consider adding small deliberate delays in activities when testing concurrency
+   - Return structured results that include operation status and relevant data
 
 3. **Idempotency Implementation**:
-   - Use idempotency keys (order ID) to prevent duplicate processing
-   - Implement a transaction log or state tracking
-   - Consider implementing compensation logic for rollbacks
+   - Use `WorkflowIDReusePolicy.REJECT_DUPLICATE` to ensure idempotent execution
+   - Design workflows to be naturally idempotent by using order IDs or transaction IDs as WorkflowIDs
+   - Handle `WorkflowExecutionAlreadyStarted` errors gracefully in client code
+   - For business operations, verify results using the workflow ID even after errors
 
 4. **Testing Temporal Code**:
-   - Use Temporal's test framework for testing workflows
-   - Mock external dependencies
-   - Test happy path and failure scenarios
+   - Use `testsuite.StartDevServer` for testing with a real Temporal server
+   - Create unique task queues for each test using UUID to avoid conflicts
+   - Implement concurrent client tests to verify idempotency behavior
+   - Use barriers or other synchronization primitives to create realistic concurrency scenarios
 
 ## Testing Strategy
 
@@ -171,33 +198,90 @@ internal/batch/
    - Test workflow replay logic
    - Test activity execution and retry behavior
 
-## Next Steps
+## Completed and Next Steps
 
-1. Implement an idempotent version of the fee deduction process using Temporal
-   - Use workflow ID and run ID for deduplication
-   - Implement transaction logs to track processed orders
+### Completed
 
-2. Create workflow definitions and activity implementations
-   - Define clear workflow interfaces
-   - Implement reusable activities with proper error handling
-   - Set up appropriate timeouts and retry policies
+1. ✅ Implemented an idempotent version of the fee deduction process using Temporal
+   - Used workflow ID based on order ID for deduplication
+   - Verified idempotency behavior with concurrent clients
+   - Demonstrated that activities execute exactly once despite concurrent attempts
 
-3. Enhance error handling and observability
-   - Implement structured logging
-   - Add metrics for key operations
-   - Set up distributed tracing
+2. ✅ Created workflow and activity implementations
+   - Implemented `FeeDeductionWorkflow` with proper input/output contracts
+   - Created a testable activity implementation with thread safety
+   - Set up appropriate workflow timeouts
 
-4. Add comprehensive testing
-   - Unit tests for individual components
-   - Integration tests for workflows and activities
-   - Load and performance testing
+3. ✅ Implemented comprehensive testing
+   - Created tests using a real Temporal dev server
+   - Implemented concurrent test scenarios
+   - Verified idempotency guarantees with detailed assertions
 
-5. Implement database persistence
+### Next Steps
+
+1. Enhance error handling and observability
+   - Implement structured logging in workflows and activities
+   - Add metrics for key operations (successful deductions, errors)
+   - Set up distributed tracing for request flows
+
+2. Implement production-ready features
+   - Add proper retry policies for activities
+   - Implement timeouts at both workflow and activity levels
+   - Create searchable workflow attributes for operational visibility
+
+3. Integrate with external systems
+   - Implement adapters for payment gateways
+   - Add notification capabilities for successful/failed transactions
+   - Implement compensating workflows for transaction rollbacks
+
+4. Implement database persistence
    - Replace in-memory store with a proper database
    - Implement database transactions for atomicity
    - Add data migration capabilities
 
-## Important Design Considerations
+5. Deploy to production
+   - Set up Temporal server in production environment
+   - Configure monitoring and alerting
+   - Implement operational runbooks for common scenarios
+
+## Implementation Learnings and Design Considerations
+
+### Key Technical Insights
+
+1. **Temporal RunID Behavior**:
+   - All clients attempting to start a workflow with the same WorkflowID receive handles with the same RunID
+   - This is fundamental to Temporal's idempotency guarantee and differs from our initial understanding
+   - Checking for identical RunIDs across clients is a reliable way to verify idempotency
+
+2. **Real vs. Test Environment**:
+   - Using a real Temporal server (`testsuite.StartDevServer`) provides more accurate behavior than mocked tests
+   - Real server tests avoid false failures related to activity re-execution
+   - The test environment required complex mocking that didn't accurately reflect production behavior
+
+3. **Concurrency Testing**:
+   - Implementing a barrier pattern ensured truly concurrent execution attempts
+   - Each client got its own goroutine and waited at the barrier before execution
+   - This approach created reliable race conditions to test idempotency guarantees
+
+4. **Error Handling Nuances**:
+   - The expected error (`WorkflowExecutionAlreadyStarted`) has specific semantics
+   - Clients should be designed to handle this error by retrieving the result using the WorkflowID
+   - Error handling can be simplified by focusing on the specific error type rather than string matching
+
+5. **Workflow ID Design**:
+   - Using business identifiers (order ID) as part of the Workflow ID creates natural idempotency
+   - Structured IDs like `"FEE-WF-" + orderID` make workflows easily identifiable
+   - For production systems, consider adding tenant or shard identifiers for multi-tenant systems
+
+6. **Activity Execution Guarantees**:
+   - With proper configuration, Temporal guarantees activities execute exactly once per workflow
+   - This removes the need for application-level idempotency checks
+   - The activity execution count should always be 1 despite multiple client attempts
+
+7. **Temporal vs. HTTP Implementation**:
+   - Temporal provides idempotency without complex application logic
+   - The HTTP approach required explicit transaction logs or locking
+   - Temporal's infrastructure-level guarantees are more robust against edge cases
 
 1. **Idempotency**: Ensure operations can be retried without side effects
 2. **Fault Tolerance**: Handle various failure scenarios gracefully

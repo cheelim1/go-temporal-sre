@@ -1,0 +1,197 @@
+# Solving the Idempotency Problem with Temporal
+
+SRE's Guide to Bulletproof Batch Processing
+Tags: temporal, idempotency, batch-processing, sre
+
+Michael Leow
+Golang Enthusiast
+Apr 08, 2025
+
+## The Idempotency Problem
+
+- What is idempotency? An operation that can be applied multiple times without changing the result
+- Why should SREs care? Critical for reliability in distributed systems
+- Common problems:
+  - Double billing customers
+  - Duplicate inventory changes
+  - Multiple record creations
+
+: SREs face idempotency challenges daily: retries, cron jobs, distributed systems
+: Without idempotency, each retry risks creating duplicate operations
+
+## SRE Nightmare: The Double-Billing Scenario
+
+.image images/double-billing.png 450 700
+
+: Imagine a payment system processing fees for thousands of accounts
+: Due to network timeout, client retries the operation
+: Result: customer charged twice, support tickets flood in, weekend ruined
+
+## Traditional Solutions (And Their Problems)
+
+- Database transactions + locking
+  - Creates bottlenecks, reduces throughput
+  
+- Transaction logs in application code
+  - Error-prone, hard to implement correctly
+  
+- Distributed locks
+  - Adds complexity, creates new failure modes
+
+: Most SREs implement these solutions with custom code that becomes brittle over time
+: Each team reinvents idempotency controls slightly differently
+
+## Demo: The Double-Billing Problem
+
+- Our fee deduction service without idempotency:
+
+.code ../internal/batch/activities_test.go /func TestNonIdempotency/,/^}/
+
+: Let's look at a real example - a fee deduction service that isn't idempotent
+: When two concurrent requests process the same transaction, both succeed
+: Result: customer gets charged twice
+
+## Enter Temporal - Durable Execution Engine
+
+- Temporal: Open-source microservices orchestration platform
+- Built-in idempotency guarantees with WorkflowID
+- Durable, fault-tolerant execution
+- Handles retries, timeouts, and failures automatically
+
+.image images/temporal-logo.png 350 350
+
+: Temporal was created by the team that built Uber's internal workflow system
+: Designed to handle exactly the distributed systems problems SREs face
+
+## How Temporal Solves Idempotency
+
+1. WorkflowID uniqueness guarantees
+2. Automatic deduplication of operations
+3. Safe retries that won't duplicate work
+4. Exactly-once semantics for activities
+
+.image images/workflow-deduplication.png 400 700
+
+: Temporal handles idempotency at the infrastructure level
+: No more complex application code or distributed locking
+
+## Demo: Idempotent Fee Processing with Temporal
+
+.code ../internal/batch/workflow.go /FeeDeductionWorkflow/,/^}/
+
+: This workflow handles fee deduction with built-in idempotency
+: Same workflow ID = exactly one execution
+: No chance of double billing!
+
+## Proof: Temporal Guarantees Exactly-Once Execution
+
+.image images/idempotency-proof.png 500 900
+
+: Green output shows 5 clients attempting concurrent execution with same ID
+: All get the SAME workflow RunID (proof that Temporal is routing to same execution)
+: Activity execution count = 1 despite 5 concurrent clients
+
+## Temporal vs. Traditional Approaches
+
+- HTTP + DB Transactions:
+  * Custom code for retry logic
+  * Complex distributed locking
+  * Brittle under network failures
+  
+- Temporal:
+  * Built-in idempotency with WorkflowID
+  * Resilient to network failures
+  * No custom retry/deduplication code
+
+: With Temporal, SREs don't need to implement complex deduplication logic
+: The platform provides these guarantees out of the box
+
+## Real-World SRE Use Cases
+
+- Billing and payment processing
+  * Safe fee deductions, subscription renewals
+
+- Infrastructure provisioning
+  * Create once, retry safely
+
+- Data processing pipelines
+  * Process each record exactly once
+
+- Scheduled batch jobs
+  * Replace cron with reliable, idempotent workflows
+
+: These are common tasks that SREs automate with scripts today
+: Temporal provides idempotency guarantees that scripts can't
+
+## Implementation Patterns
+
+- Use business identifiers in WorkflowID:
+  ```go
+  workflowID := "PAYMENT-" + orderID
+  ```
+
+- Set WorkflowIDReusePolicy:
+  ```go
+  options.WorkflowIDReusePolicy = enumspb.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE
+  ```
+
+- Handle expected errors:
+  ```go
+  _, isAlreadyStarted := err.(*serviceerror.WorkflowExecutionAlreadyStarted)
+  if isAlreadyStarted {
+    // Use existing workflow ID to get result
+    we := client.GetWorkflow(ctx, workflowID, "")
+    err := we.Get(ctx, &result)
+  }
+  ```
+
+: These patterns show how to implement idempotent operations with Temporal
+: They're easy to standardize across your organization
+
+## Getting Started with Temporal
+
+1. Start a local Temporal server:
+   ```bash
+   docker-compose up
+   ```
+
+2. Create workflows with idempotency guarantees:
+   ```go
+   options := client.StartWorkflowOptions{
+     ID: "UNIQUE-WORKFLOW-ID",
+     TaskQueue: "your-task-queue",
+     WorkflowIDReusePolicy: enumspb.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE,
+   }
+   ```
+
+3. Start handling SRE automation without idempotency headaches!
+
+: Getting started is easy - you can run Temporal locally or use a managed service
+: The SDK has client libraries for Go, Java, TypeScript, PHP, and more
+
+## Beyond Idempotency: Why SREs Love Temporal
+
+- Long-running processes without timeouts
+- Built-in retry policies
+- Visibility into execution history
+- Versioning for workflow updates
+- Searchable execution history
+
+.image images/sre-visibility.png 350 600
+
+: Temporal solves many other SRE challenges beyond idempotency
+: Full visibility into execution history makes debugging easier
+
+## Resources to Learn More
+
+- GitHub repo: [github.com/leowmjw/go-temporal-sre](https://github.com/leowmjw/go-temporal-sre)
+- Temporal docs: [docs.temporal.io](https://docs.temporal.io)
+- Temporal University: [learn.temporal.io](https://learn.temporal.io)
+- Community Slack: [temporalio.slack.com](https://temporalio.slack.com)
+
+## Q&A
+
+.image images/questions.png 500 500
+
+: Happy to answer any questions about idempotency, Temporal, or the demo!
+: Available for deep dives into the code after the presentation
