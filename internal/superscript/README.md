@@ -11,23 +11,25 @@ This project demonstrates how to make non-idempotent scripts idempotent using Te
 ## Setup Instructions
 
 1. Make sure you have a local Temporal server running:
-   ```
+   ```bash
    # Using Temporal CLI
-   temporal server start-dev
-   
-   # Or using Docker
-   docker run --rm -p 7233:7233 temporalio/temporal:latest
+   $ temporal --version
+   temporal version 0.0.0-DEV (Server 1.27.1, UI 2.36.0)
    ```
 
 2. Build the SuperScript application:
-   ```
-   cd /Users/leow/GOMOD/go-temporal-sre
-   go build -o bin/superscript ./cmd/superscript/
+   ```bash
+   $ make superscript-setup   
+   # It will build the binary; give some instructions
+   # cd /Users/leow/GOMOD/go-temporal-sre
+   # go build -o bin/superscript ./cmd/superscript/
    ```
 
 3. Run the application:
-   ```
-   ./bin/superscript
+   ```bash
+   $ make superscript-sTART
+   # it will run the built binary ..
+   # ./bin/superscript
    ```
 
 The application will start both a Temporal worker and an HTTP server on port 8080.
@@ -54,7 +56,7 @@ make start-temporal
 #### Terminal 2 (SuperScript Application)
 ```bash
 # First build the application
-make superscript-demo-1
+make superscript-setup
 
 # Then start the SuperScript application
 make superscript-start
@@ -91,7 +93,7 @@ If you prefer to run the demos manually, you can follow these steps:
 
 The traditional script has no idempotency protection, so running it multiple times in parallel can lead to race conditions and duplicate payment processing.
 
-```
+```bash
 # Run the traditional script directly
 curl http://localhost:8080/run/traditional
 
@@ -104,7 +106,7 @@ Try running this command multiple times in quick succession to simulate concurre
 
 Using Temporal's workflow ID reuse policy, we ensure that only one execution processes a given OrderID.
 
-```
+```bash
 # Run a single payment workflow with the sample OrderID (ORD-DEMO-123)
 curl -X POST http://localhost:8080/run/single -H "Content-Type: application/json" -d '{"order_id":"ORD-DEMO-123"}'
 
@@ -118,7 +120,7 @@ You'll see that the second call is handled idempotently - Temporal will return t
 
 The orchestrator workflow runs multiple child workflows, each responsible for a single payment collection.
 
-```
+```bash
 # Run the batch workflow with default order IDs
 curl -X POST http://localhost:8080/run/batch -H "Content-Type: application/json" -d '{}'
 ```

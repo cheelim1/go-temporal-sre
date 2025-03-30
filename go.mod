@@ -5,6 +5,7 @@ go 1.24.1
 require (
 	github.com/bitfield/script v0.24.1
 	github.com/davecgh/go-spew v1.1.1
+	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.10.0
 	go.temporal.io/api v1.46.0

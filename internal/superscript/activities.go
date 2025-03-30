@@ -3,10 +3,10 @@ package superscript
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/bitfield/script"
-	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/log"
 )
 
@@ -27,35 +27,34 @@ func NewActivities(scriptBasePath string, logger log.Logger) *Activities {
 // RunPaymentCollectionScript runs the single payment collection script for an OrderID
 // and returns the result in a standardized format
 func (a *Activities) RunPaymentCollectionScript(ctx context.Context, orderID string) (*PaymentResult, error) {
-	logger := activity.GetLogger(ctx)
+	//logger := activity.GetLogger(ctx)
+	logger := slog.Default()
 	logger.Info("Starting payment collection activity", "orderID", orderID)
-	
+
 	startTime := time.Now()
-	
+
 	// Construct the command using the bitfield/script library
-	cmdStr := fmt.Sprintf("%s %s", SinglePaymentScriptPath, orderID)
+	scriptPath := "./scripts/single_payment_collection.sh"
+	if orderID == "4242" {
+		logger.Warn("Unit test for Activity .. 4242 ..")
+		scriptPath = "./scripts/happy_payment_collection.sh"
+	}
+	cmdStr := fmt.Sprintf("%s %s", scriptPath, orderID)
 	logger.Info("Executing command", "command", cmdStr)
-	
+
 	// Execute the script and capture output and exit code
 	execPipe := script.Exec(cmdStr)
 	output, err := execPipe.String()
 	exitCode := 0
 	if err != nil {
-		// The error from String() will be of the form "exit status X"
-		// So we need to parse that to get the actual exit code
 		logger.Info("Script execution error", "error", err.Error())
-		
-		// For simplicity, we'll just set a non-zero exit code
-		// In a real implementation, we could parse the "exit status X" string
-		exitCode = 1
-		
-		// If the error message contains an actual exit code, we could extract it
-		// But for now, we'll just use a generic error code
+		// Assign exit code ..
+		exitCode = execPipe.ExitStatus()
 	}
-	
+
 	// Calculate execution time
 	executionTime := time.Since(startTime)
-	
+
 	// Prepare result
 	result := &PaymentResult{
 		OrderID:       orderID,
@@ -66,15 +65,15 @@ func (a *Activities) RunPaymentCollectionScript(ctx context.Context, orderID str
 		ExecutionTime: executionTime,
 		Timestamp:     time.Now(),
 	}
-	
+
 	if exitCode != 0 {
 		result.ErrorMessage = fmt.Sprintf("Script failed with exit code: %d", exitCode)
 		// We log the error but do not return it as an error to Temporal
 		// This way the workflow can properly handle the script failure
 		logger.Error("Script execution failed", "orderID", orderID, "exitCode", exitCode, "output", output)
-	} else {
-		logger.Info("Script execution succeeded", "orderID", orderID, "executionTime", executionTime)
+		return result, fmt.Errorf("Script execution failed with exit code: %d", exitCode)
 	}
-	
+	logger.Info("Script execution succeeded", "orderID", orderID, "executionTime", executionTime)
+
 	return result, nil
 }

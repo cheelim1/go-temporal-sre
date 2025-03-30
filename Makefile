@@ -27,9 +27,10 @@ run-script:
 # SuperScript Demo Targets
 .PHONY: superscript-demo-1 superscript-start superscript-demo-2 superscript-demo-3 superscript-demo-4 superscript-stop
 
-superscript-demo-1:
-	@echo "Running SuperScript Demo 1: Setup and Build"
-	@./internal/superscript/scripts/demo-1-setup.sh
+superscript-setup:
+	@echo "Running SuperScript Demo: Setup and Build"
+	@cd ./internal/superscript/scripts && ./demo-1-setup.sh
+	# @go build -o bin/superscript ./cmd/superscript/
 
 superscript-start:
 	@echo "Starting SuperScript Application"
