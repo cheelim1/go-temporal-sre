@@ -27,7 +27,7 @@ func TestActivities_RunPaymentCollectionScript(t *testing.T) {
 		wantErr bool
 	}{
 		{"case #0", fields{
-			ScriptBasePath: "",
+			ScriptBasePath: "./",
 			Logger:         slog.Default(),
 		}, args{
 			ctx:     context.Background(),
@@ -40,7 +40,7 @@ func TestActivities_RunPaymentCollectionScript(t *testing.T) {
 			ExitCode:     2,
 		}, true},
 		{"case #1", fields{
-			ScriptBasePath: "",
+			ScriptBasePath: "./",
 			Logger:         slog.Default(),
 		}, args{
 			ctx:     context.Background(),
@@ -65,7 +65,7 @@ func TestActivities_RunPaymentCollectionScript(t *testing.T) {
 				return
 			}
 			// DEBUG
-			// spew.Dump(got)
+			//spew.Dump(got)
 			gotSample := &PaymentResult{
 				OrderID:      got.OrderID,
 				Success:      got.Success,

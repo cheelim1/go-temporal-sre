@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # APP Configuration
 APP_PORT=8080
 APP_ENDPOINT="single"
-ORDER_ID="ORD-DEMO-123"
+ORDER_ID="4242" # Must be integer
 
 # Define color codes using tput (more portable than ANSI escape sequences)
 if [[ -t 1 ]]; then  # Check if stdout is a terminal
@@ -98,7 +98,7 @@ run_single_payment() {
 
     # Use curl with timeout and better error handling
     local response
-    if ! response=$(curl -s --connect-timeout 5 --max-time 10 \
+    if ! response=$(curl -s --connect-timeout 5 --max-time 60 \
                    -X POST "${api_url}" \
                    -H "Content-Type: application/json" \
                    -d "${json_payload}"); then
@@ -119,21 +119,38 @@ trap cleanup EXIT HUP INT TERM
 
 # Main script execution
 main() {
-    print_message "${GREEN}${BOLD}" "=== Demo 3: Testing Single Payment Idempotent Workflow ==="
+    # Optional; if using binary version ..
+    # Check if the SuperScript application is running
+#    if ! is_app_running; then
+#        print_error "SuperScript application is not running"
+#        printf "Please run 'make superscript-demo-1' first\n"
+#        exit 1
+#    fi
+
+    print_message "${GREEN}${BOLD}" "=== Demo 3a: Testing Single Payment Auto-Retry Workflow ==="
+    print_message "${YELLOW}" "This demo shows how Temporal makes script execution Retry Automatically"
+    printf "Running the workflow will execute until the whole script succeeds!!\n"
+
+    ORDER_ID="12345" # Must be integer
+    set +e
+    # Run the workflow where it is unstable
+    run_single_payment "0"
+    set -e
+
+    print_message "${GREEN}" "\nObserve how only the first request executes the script"
+    printf "The subsequent requests are handled idempotently, returning results from the first execution\n"
+
+    print_message "${GREEN}${BOLD}" "=== Demo 3b: Testing Single Payment Idempotent Workflow ==="
     print_message "${YELLOW}" "This demo shows how Temporal makes script execution IDEMPOTENT"
     printf "Running the workflow multiple times with the same OrderID will execute the script only ONCE!\n"
     print_message "${GREEN}" "Temporal uses WorkflowIDReusePolicy.REJECT_DUPLICATE to ensure idempotency"
 
-    # Check if the SuperScript application is running
-    if ! is_app_running; then
-        print_error "SuperScript application is not running"
-        printf "Please run 'make superscript-demo-1' first\n"
-        exit 1
-    fi
-
     printf "\nWe'll run the single payment workflow 3 times in succession with the same OrderID.\n"
     printf "This demonstrates how Temporal ensures each payment is processed exactly once.\n\n"
 
+    ORDER_ID="4242" # Must be integer
+    # TODO: Figure out why below return err 1 ..
+    set +e
     # Run the workflow multiple times to show idempotent behavior
     local success_count=0
     for ((i=1; i<=3; i++)); do
@@ -141,6 +158,7 @@ main() {
             ((success_count++))
         fi
     done
+    set -e
 
     print_message "${GREEN}" "\nObserve how only the first request executes the script"
     printf "The subsequent requests are handled idempotently, returning results from the first execution\n"

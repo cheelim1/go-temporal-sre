@@ -34,7 +34,7 @@ superscript-setup:
 
 superscript-start:
 	@echo "Starting SuperScript Application"
-	@chmod +x ./internal/superscript/scripts/demo-start.sh
+	# chmod +x ./internal/superscript/scripts/demo-start.sh
 	@./internal/superscript/scripts/demo-start.sh
 
 superscript-demo-2:

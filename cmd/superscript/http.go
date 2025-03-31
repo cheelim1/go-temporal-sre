@@ -99,16 +99,18 @@ func (s *Server) handleRunSingle(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
+		// DEBUG
+		//spew.Dump(err)
 		if temporal.IsWorkflowExecutionAlreadyStartedError(err) {
 			// This is expected when calling the same workflow ID multiple times
 			// We can get the existing run and return its info
 			s.Logger.Info("Workflow already started - retrieving existing run", "workflowID", workflowID)
-			
+
 			// Return response indicating that this was a duplicate request that was handled idempotently
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"message": "Workflow already started and handled idempotently",
-				"workflow_id": workflowID,
+				"message":      "Workflow already started and handled idempotently",
+				"workflow_id":  workflowID,
 				"is_duplicate": true,
 			})
 			return
@@ -184,7 +186,7 @@ func (s *Server) handleRunBatch(w http.ResponseWriter, r *http.Request) {
 	// Return immediately with the workflow ID so user can track progress
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"message": "Orchestrator workflow started successfully",
+		"message":     "Orchestrator workflow started successfully",
 		"workflow_id": workflowRun.GetID(),
 		"run_id":      workflowRun.GetRunID(),
 		"status":      "running",
@@ -205,7 +207,7 @@ func (s *Server) handleRunTraditional(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		cmd := fmt.Sprintf("%s", superscript.TraditionalBatchScriptPath)
 		s.Logger.Info("Running command", "cmd", cmd)
-		
+
 		// Use the script package to execute the command and get the output
 		output, err := script.Exec(cmd).String()
 		if err != nil {

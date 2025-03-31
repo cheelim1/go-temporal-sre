@@ -103,23 +103,26 @@ main() {
     printf "Running the script multiple times will process payments multiple times!\n"
     print_message "${RED}" "In a real-world application, this could cause double-charging customers"
 
-    # Check if the SuperScript application is running
-    if ! is_app_running; then
-        print_error "SuperScript application is not running"
-        printf "Please run 'make superscript-demo-1' first\n"
-        exit 1
-    fi
+    # Check if the SuperScript application is running <-- not needed
+#    if ! is_app_running; then
+#        print_error "SuperScript application is not running"
+#        printf "Please run 'make superscript-demo-1' first\n"
+#        exit 1
+#    fi
 
     printf "\nWe'll run the traditional script 3 times in quick succession.\n"
     printf "This demonstrates how multiple requests can lead to duplicate processing.\n\n"
 
+    set +e
     # Run the script multiple times to show non-idempotent behavior
     local success_count=0
-    for ((i=1; i<=3; i++)); do
+    for ((i=1; i<3; i++)); do
         if run_traditional "$i"; then
             ((success_count++))
         fi
     done
+    set -e
+
 
     print_message "${RED}" "\nNote how each script execution processes payments independently"
     printf "This can lead to race conditions and duplicate payments\n\n"

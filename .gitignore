@@ -35,5 +35,9 @@ bin
 # Ignore Goland
 .idea
 
+# Ignore logs
+superscript.log
+
 ## Personal .md
 ctoh.md
+

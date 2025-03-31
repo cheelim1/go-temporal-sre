@@ -34,10 +34,10 @@ func (a *Activities) RunPaymentCollectionScript(ctx context.Context, orderID str
 	startTime := time.Now()
 
 	// Construct the command using the bitfield/script library
-	scriptPath := "./scripts/single_payment_collection.sh"
+	scriptPath := a.ScriptBasePath + "./scripts/single_payment_collection.sh"
 	if orderID == "4242" {
 		logger.Warn("Unit test for Activity .. 4242 ..")
-		scriptPath = "./scripts/happy_payment_collection.sh"
+		scriptPath = a.ScriptBasePath + "./scripts/happy_payment_collection.sh"
 	}
 	cmdStr := fmt.Sprintf("%s %s", scriptPath, orderID)
 	logger.Info("Executing command", "command", cmdStr)
@@ -45,11 +45,13 @@ func (a *Activities) RunPaymentCollectionScript(ctx context.Context, orderID str
 	// Execute the script and capture output and exit code
 	execPipe := script.Exec(cmdStr)
 	output, err := execPipe.String()
-	exitCode := 0
+	//spew.Dump(output)
+	//spew.Dump(err)
+	// Assign exit code ..
+	exitCode := execPipe.ExitStatus()
 	if err != nil {
 		logger.Info("Script execution error", "error", err.Error())
-		// Assign exit code ..
-		exitCode = execPipe.ExitStatus()
+		//return nil, err
 	}
 
 	// Calculate execution time
