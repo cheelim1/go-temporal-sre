@@ -101,7 +101,7 @@ run_orchestrator() {
 
     # Use curl with timeout and better error handling
     local response
-    if ! response=$(curl -s --connect-timeout 5 --max-time 10 \
+    if ! response=$(curl -s --connect-timeout 1 --max-time 60 \
                    -X POST "${api_url}" \
                    -H "Content-Type: application/json" \
                    -d "${json_payload}"); then
@@ -113,7 +113,6 @@ run_orchestrator() {
     # Format JSON response
     format_json "${response}"
     printf "\n"
-    sleep 2
     return 0
 }
 
@@ -133,28 +132,35 @@ trap cleanup EXIT HUP INT TERM
 
 # Main script execution
 main() {
+
+    # Check if the SuperScript application is running
+#    if ! is_app_running; then
+#        print_error "SuperScript application is not running"
+#        printf "Please run 'make superscript-demo-1' first\n"
+#        exit 1
+#    fi
+
     print_message "${GREEN}${BOLD}" "=== Demo 4: Testing Orchestrator Workflow ==="
     print_message "${YELLOW}" "This demo shows how Temporal orchestrates multiple child workflows while maintaining idempotency"
     printf "The orchestrator replaces the traditional batch script with a proper workflow\n"
     print_message "${GREEN}" "Each child workflow still maintains its own idempotency guarantees"
 
-    # Check if the SuperScript application is running
-    if ! is_app_running; then
-        print_error "SuperScript application is not running"
-        printf "Please run 'make superscript-demo-1' first\n"
-        exit 1
-    fi
 
     printf "\nWe'll run the orchestrator workflow ${DEMO_RUNS} times.\n"
     printf "This demonstrates how Temporal manages multiple child workflows with idempotency.\n\n"
 
-    # Run the workflow multiple times
-    local success_count=0
-    for ((i=1; i<=DEMO_RUNS; i++)); do
-        if run_orchestrator "$i"; then
-            ((success_count++))
-        fi
-    done
+    set +e
+#    # Run the workflow multiple times
+#    local success_count=0
+#    for ((i=1; i<=DEMO_RUNS; i++)); do
+#        if run_orchestrator "$i"; then
+#            ((success_count++))
+#        fi
+#        sleep 10
+#    done
+
+    run_orchestrator "0"
+    set -e
 
     print_message "${GREEN}" "\nThe orchestrator creates child workflows for each OrderID"
     printf "Each child workflow has its own WorkflowID based on the OrderID\n"

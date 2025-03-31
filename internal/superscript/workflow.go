@@ -1,7 +1,9 @@
 package superscript
 
 import (
+	"errors"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"time"
 
 	"go.temporal.io/api/enums/v1"
@@ -32,7 +34,7 @@ func SinglePaymentCollectionWorkflow(ctx workflow.Context, params SinglePaymentW
 		RetryPolicy: &temporal.RetryPolicy{
 			InitialInterval:    time.Second,
 			BackoffCoefficient: 2.0,
-			MaximumInterval:    time.Minute,
+			MaximumInterval:    30 * time.Second,
 			MaximumAttempts:    5,
 		},
 	}
@@ -70,12 +72,18 @@ func OrchestratorWorkflow(ctx workflow.Context, params OrchestratorWorkflowParam
 
 	// Create child workflow options
 	cwo := workflow.ChildWorkflowOptions{
-		// Allow duplicate executions in the parent workflow
+		// Allow duplicate executions in the parent workflow but not child
 		WorkflowIDReusePolicy: enums.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE,
-		TaskQueue:             SuperscriptTaskQueue,
+		// Reject duplicate ensures idempotency
+		//WorkflowIDReusePolicy: enums.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE,
+		TaskQueue: SuperscriptTaskQueue,
 	}
 
 	ctx = workflow.WithChildOptions(ctx, cwo)
+
+	// TODO: Usually for futures; just get all the futures into slice
+	//	and iterate on it block ..
+	// Alt: Use go routone Go... but what is the wg equivalent
 
 	// Process each OrderID by starting a child workflow
 	for i, orderID := range params.OrderIDs {
@@ -86,24 +94,40 @@ func OrchestratorWorkflow(ctx workflow.Context, params OrchestratorWorkflowParam
 
 		var result PaymentResult
 		// Configure the child workflow options with the specific workflow ID
-		child_ctx := workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
+		childCtx := workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 			WorkflowID: workflowID,
 			// Reject duplicate ensures only one execution of the same workflow ID can be running
 			WorkflowIDReusePolicy: enums.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE,
 		})
-		
+
+		//var cwf []workflow.ChildWorkflowFuture
+		//cwf[0].GetChildWorkflowExecution().Get(childCtx, &result)
+
 		// Execute the child workflow to process this order
-		errFuture := workflow.ExecuteChildWorkflow(
-			child_ctx, 
-			"SinglePaymentCollectionWorkflow", 
+		exFuture := workflow.ExecuteChildWorkflow(
+			childCtx,
+			"SinglePaymentCollectionWorkflow",
 			SinglePaymentWorkflowParams{OrderID: orderID},
 		)
-		err := errFuture.Get(ctx, &result)
+		err := exFuture.Get(ctx, &result)
 
 		if err != nil {
-			logger.Error("Child workflow execution failed", "orderID", orderID, "error", err)
-			batchResult.FailCount++
-			continue
+			logger.Error("Failed to execute child workflow", "error", err)
+			// If error is not the expected one; ca th it!
+			var cwexErr *temporal.ChildWorkflowExecutionError
+			if !errors.Is(err, cwexErr) {
+				logger.Error("Child workflow execution failed", "orderID", orderID, "error", err)
+				batchResult.FailCount++
+				continue
+			}
+			// DEBUG
+			errors.As(err, &cwexErr)
+			spew.Dump(cwexErr)
+			logger.Warn("CHILDERR: ", cwexErr.Error())
+
+			// This is expected when calling the same workflow ID multiple times
+			// We can get the existing run and return its info
+			logger.Info("Workflow already started - retrieving existing run", "workflowID", workflowID)
 		}
 
 		// Add the result to our batch
@@ -121,7 +145,7 @@ func OrchestratorWorkflow(ctx workflow.Context, params OrchestratorWorkflowParam
 	batchResult.EndTime = workflow.Now(ctx)
 
 	// Log summary
-	logger.Info("Orchestrator workflow completed", 
+	logger.Info("Orchestrator workflow completed",
 		"totalCount", batchResult.TotalCount,
 		"successCount", batchResult.SuccessCount,
 		"failCount", batchResult.FailCount,

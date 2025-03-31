@@ -154,7 +154,10 @@ func (s *Server) handleRunBatch(w http.ResponseWriter, r *http.Request) {
 
 	if len(request.OrderIDs) == 0 {
 		// Use default order IDs if none provided (use same IDs as in traditional script)
+		// Full test below
 		request.OrderIDs = []string{"7307", "5493", "7387", "2614", "5999", "3078", "8577", "5479", "6606", "8448"}
+		// Below shortened
+		//request.OrderIDs = []string{"7307", "5493"}
 	}
 
 	// Create a workflow ID based on the current date
@@ -171,10 +174,13 @@ func (s *Server) handleRunBatch(w http.ResponseWriter, r *http.Request) {
 
 	s.Logger.Info("Starting orchestrator workflow", "orderCount", len(request.OrderIDs), "workflowID", workflowID)
 
-	workflowRun, err := s.Client.ExecuteWorkflow(r.Context(), workflowOptions, superscript.OrchestratorWorkflow, superscript.OrchestratorWorkflowParams{
-		OrderIDs: request.OrderIDs,
-		RunDate:  time.Now(),
-	})
+	workflowRun, err := s.Client.ExecuteWorkflow(r.Context(),
+		workflowOptions,
+		superscript.OrchestratorWorkflow,
+		superscript.OrchestratorWorkflowParams{
+			OrderIDs: request.OrderIDs,
+			RunDate:  time.Now(),
+		})
 
 	if err != nil {
 		s.Logger.Error("Failed to start workflow", "error", err)

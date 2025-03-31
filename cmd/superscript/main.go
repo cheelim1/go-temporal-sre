@@ -68,8 +68,8 @@ func Run() {
 	}
 
 	// Start HTTP server
-	server := NewServer(tempClient, logger, ":8080")
-	
+	server := NewServer(tempClient, logger, "localhost:8080")
+
 	// Start server in a goroutine so we can handle graceful shutdown
 	go func() {
 		if err := server.Start(); err != nil && err != http.ErrServerClosed {
@@ -81,23 +81,23 @@ func Run() {
 	fmt.Println("SuperScript system is ready!")
 	fmt.Println("HTTP Server running at http://localhost:8080")
 	fmt.Println("Press Ctrl+C to exit...")
-	
+
 	// Wait for interrupt signal
 	WaitForInterrupt()
-	
+
 	// Shutdown gracefully
 	fmt.Println("\nShutting down gracefully...")
-	
+
 	// Stop HTTP server
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := server.Stop(ctx); err != nil {
 		logger.Error("Error stopping HTTP server", "error", err)
 	}
-	
+
 	// Stop worker
 	worker.Stop()
-	
+
 	fmt.Println("Shutdown complete")
 	os.Exit(0)
 }
