@@ -150,16 +150,16 @@ main() {
     printf "This demonstrates how Temporal manages multiple child workflows with idempotency.\n\n"
 
     set +e
-#    # Run the workflow multiple times
-#    local success_count=0
-#    for ((i=1; i<=DEMO_RUNS; i++)); do
-#        if run_orchestrator "$i"; then
-#            ((success_count++))
-#        fi
-#        sleep 10
-#    done
+   # Run the workflow multiple times
+   local success_count=0
+   for ((i=1; i<=DEMO_RUNS; i++)); do
+       if run_orchestrator "$i"; then
+           ((success_count++))
+       fi
+       sleep 10
+   done
 
-    run_orchestrator "0"
+    # run_orchestrator "0"
     set -e
 
     print_message "${GREEN}" "\nThe orchestrator creates child workflows for each OrderID"

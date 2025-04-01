@@ -9,9 +9,9 @@ const (
 	SuperscriptTaskQueue = "superscript-task-queue"
 
 	// SinglePaymentWorkflowType Workflow types
-	SinglePaymentWorkflowType = "single-payment-workflow"
+	SinglePaymentWorkflowType = "SinglePaymentCollectionWorkflow"
 	// OrchestratorWorkflowType Workflow types
-	OrchestratorWorkflowType = "orchestrator-workflow"
+	OrchestratorWorkflowType = "OrchestratorWorkflow"
 
 	// SampleOrderID Sample OrderID for demonstration
 	SampleOrderID = "ORD-DEMO-123"
@@ -28,6 +28,7 @@ type PaymentResult struct {
 	Success       bool          `json:"success"`
 	Output        string        `json:"output"`
 	ErrorMessage  string        `json:"error_message,omitempty"`
+	Error         string        `json:"error,omitempty"` // Added field used in workflow.go
 	ExitCode      int           `json:"exit_code"`
 	ExecutionTime time.Duration `json:"execution_time"`
 	Timestamp     time.Time     `json:"timestamp"`

@@ -75,13 +75,66 @@ Potential improvements for the future:
 4. **Testing**: Add comprehensive unit and integration tests
 5. **Configuration**: Make the application more configurable through environment variables
 
+## Advanced Error Handling: ChildWorkflowExecutionAlreadyStartedError
+
+When implementing idempotent workflows with Temporal, proper handling of the `ChildWorkflowExecutionAlreadyStartedError` is crucial. This error occurs when attempting to start a workflow with an ID that's already running, which is exactly what happens when using `WorkflowIDReusePolicy.REJECT_DUPLICATE` for idempotency.
+
+### Key Learnings
+
+1. **Error Type Detection**: The `ChildWorkflowExecutionAlreadyStartedError` is contained within a `ChildWorkflowExecutionError` and needs to be extracted using `errors.As()` with proper type assertions:
+
+   ```go
+   var childWorkflowExecutionError *temporal.ChildWorkflowExecutionError
+   if errors.As(err, &childWorkflowExecutionError) {
+       var childWorkflowExecutionAlreadyStartedError *temporal.ChildWorkflowExecutionAlreadyStartedError
+       if errors.As(childWorkflowExecutionError.Unwrap(), &childWorkflowExecutionAlreadyStartedError) {
+           // Handle the already started workflow case
+       }
+   }
+   ```
+
+2. **Idempotency Treatment**: When this error occurs, it should be treated as a successful case since it indicates the idempotency mechanism is working correctly. The workflow is already running, which is the desired behavior when trying to prevent duplicate executions.
+
+3. **Workflow Information**: You can include useful context in the response such as the WorkflowID, RunID, and attempt number:
+
+   ```go
+   Output: "WorkflowID: " + workflow.GetInfo(ctx).WorkflowExecution.ID +
+           " RunID: " + workflow.GetInfo(ctx).WorkflowExecution.RunID +
+           fmt.Sprintf(" Attempt: %d", workflow.GetInfo(ctx).Attempt)
+   ```
+
+## Workflow Type Registration
+
+A critical aspect of Temporal workflow implementation is ensuring the workflow type constants match the registered workflow functions. There are two approaches to handling this:
+
+1. **Default Registration**: When registering workflows without specifying a name, Temporal uses the function name as the workflow type:
+
+   ```go
+   w.RegisterWorkflow(superscript.SinglePaymentCollectionWorkflow)
+   // Registers as "SinglePaymentCollectionWorkflow"
+   ```
+
+2. **Constant Alignment**: Ensure that any workflow type constants used in the code match the registered names:
+
+   ```go
+   // Constants must match registered workflow names
+   SinglePaymentWorkflowType = "SinglePaymentCollectionWorkflow"
+   OrchestratorWorkflowType = "OrchestratorWorkflow"
+   ```
+
+Mismatches between workflow type constants and registered workflow names will result in errors like:
+```
+unable to find workflow type: single-payment-workflow. Supported types: [SinglePaymentCollectionWorkflow, OrchestratorWorkflow]
+```
+
 ## Key Takeaways
 
 1. Temporal provides a powerful way to make non-idempotent operations idempotent
 2. The WorkflowID is the key to ensuring idempotency
-3. Proper error handling is essential for script execution
-4. Parent-child workflow patterns enable complex orchestration
-5. The demo scripts effectively showcase the benefits of using Temporal for idempotency
+3. Proper error handling, especially for `ChildWorkflowExecutionAlreadyStartedError`, is essential
+4. Workflow type constants must align with registered workflow function names
+5. Parent-child workflow patterns enable complex orchestration
+6. The demo scripts effectively showcase the benefits of using Temporal for idempotency
 
 ## References
 
