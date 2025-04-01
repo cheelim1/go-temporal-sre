@@ -126,7 +126,10 @@ func OrchestratorWorkflow(ctx workflow.Context, params OrchestratorWorkflowParam
 				TaskQueue:             SuperscriptTaskQueue,
 			})
 
-			exFuture := workflow.ExecuteChildWorkflow(childCtx, SinglePaymentWorkflowType, SinglePaymentWorkflowParams{OrderID: orderID})
+			exFuture := workflow.ExecuteChildWorkflow(
+				childCtx, SinglePaymentWorkflowType,
+				SinglePaymentWorkflowParams{OrderID: orderID},
+			)
 			futuresMap[exFuture] = idx // Store mapping
 
 			selector.AddFuture(exFuture, func(f workflow.Future) {
