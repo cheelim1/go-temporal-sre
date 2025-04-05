@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import streamlit as st
 import requests
 import json
@@ -7,8 +9,17 @@ BACKEND_URL = "http://localhost:8080"
 
 st.title("MongoDB Atlas JIT Access Request")
 
-# Step 1: Get the username and load current role and built-in roles.
-username = st.text_input("Enter your database username:")
+# Step 1: Get the list of existing database users
+try:
+    users_response = requests.get(f"{BACKEND_URL}/api/database-users")
+    users_response.raise_for_status()
+    database_users = users_response.json()
+except Exception as e:
+    st.error(f"Error loading database users: {e}")
+    database_users = []
+
+# Create a dropdown for username selection
+username = st.selectbox("Select your database username:", database_users)
 
 if st.button("Load User Info") and username:
     try:
@@ -37,13 +48,17 @@ if "current_role" in st.session_state and "built_in_roles" in st.session_state:
     available_roles = [r for r in st.session_state.built_in_roles if r != st.session_state.current_role]
     
     new_role = st.selectbox("Select the new role you want to request:", available_roles)
-    reason = st.text_area("Reason for access:")
-    duration = st.selectbox("Select duration of access:", ["5m", "15m", "30m", "1h"])
+    reason = st.text_area("Reason for access (required):", placeholder="Please provide a reason for requesting this access")
+    duration = st.selectbox("Select duration of access:", ["3m", "5m", "15m", "1h"])
     
-    if st.button("Submit JIT Request"):
-        # Double-check that the new role is different (should be true)
-        if new_role == st.session_state.current_role:
-            st.error("New role cannot be the same as your current role.")
+    # Only disable submit button if reason is empty
+    submit_disabled = not reason.strip()
+    
+    if st.button("Submit JIT Request", disabled=submit_disabled):
+        if new_role == "atlasAdmin":
+            st.error("Your user is not granted access to the atlasAdmin role.")
+        elif not reason.strip():
+            st.error("Please provide a reason for requesting access.")
         else:
             payload = {
                 "username": username,

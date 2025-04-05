@@ -5,5 +5,3 @@ import "fmt"
 func main() {
 	fmt.Println("Welcome to go-temporal-sre")
 }
-
-

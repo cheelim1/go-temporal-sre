@@ -106,8 +106,8 @@ func (h *Handler) PostJITRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	workflowID := "jit_access_" + req.Username + "_" + fmt.Sprintf("%d", time.Now().Unix())
 	options := client.StartWorkflowOptions{
-		ID:        workflowID,
-		TaskQueue: "jit_access_task_queue",
+		ID:                                       workflowID,
+		TaskQueue:                                "jit_access_task_queue",
 		WorkflowExecutionErrorWhenAlreadyStarted: true,
 	}
 	we, err := h.TemporalClient.ExecuteWorkflow(context.Background(), options, jitaccess.JITAccessWorkflow, workflowRequest)
@@ -123,4 +123,17 @@ func (h *Handler) PostJITRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+// GetDatabaseUsers handles GET /api/database-users
+func (h *Handler) GetDatabaseUsers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	users, err := atlas.GetDatabaseUsers(ctx)
+	if err != nil {
+		slog.Error("failed to get database users", "error", err)
+		http.Error(w, fmt.Sprintf("failed to get database users: %v", err), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
 }

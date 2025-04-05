@@ -108,3 +108,19 @@ func SetUserRole(ctx context.Context, username, role string) error {
 	}
 	return nil
 }
+
+// GetDatabaseUsers returns a list of all database users in the project.
+func GetDatabaseUsers(ctx context.Context) ([]string, error) {
+	resp, _, err := atlasClient.DatabaseUsersApi.
+		ListDatabaseUsers(ctx, projectID).
+		Execute()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get database users from Atlas: %w", err)
+	}
+
+	users := make([]string, 0, len(*resp.Results))
+	for _, user := range *resp.Results {
+		users = append(users, user.Username)
+	}
+	return users, nil
+}

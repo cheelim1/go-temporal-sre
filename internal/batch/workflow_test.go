@@ -140,7 +140,7 @@ func (s *WorkflowTestSuite) SetupTest() {
 	// Attach the testServer + testStore for use
 	s.testServer = testServer
 	s.testStore = testStore
-	
+
 }
 
 // TearDownTest closes the test server after each test

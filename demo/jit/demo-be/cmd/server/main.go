@@ -38,6 +38,7 @@ func main() {
 	mux.HandleFunc("/api/user-role", handler.GetUserRole)
 	mux.HandleFunc("/api/built-in-roles", handler.GetBuiltInRoles)
 	mux.HandleFunc("/api/jit-request", handler.PostJITRequest)
+	mux.HandleFunc("/api/database-users", handler.GetDatabaseUsers)
 
 	addr := ":" + cfg.Port
 	slog.Info("HTTP server listening", "address", addr)
