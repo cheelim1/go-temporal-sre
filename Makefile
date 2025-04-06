@@ -88,3 +88,18 @@ jit-demo-stop:
 	@pkill -f "cmd/worker/main.go" || true
 	@pkill -f "cmd/server/main.go" || true
 	@pkill -f "streamlit run app.py" || true 
+
+# MongoDB Demo Targets
+.PHONY: mongo-demo
+
+mongo-demo:
+	@echo "Connecting to MongoDB and running demo commands..."
+	@cd demo/jit/demo-be && \
+		MONGODB_PASSWORD=$$(grep MONGODB_PASSWORD .env.local | cut -d '=' -f2) && \
+		mongosh "mongodb+srv://demo-user:$$MONGODB_PASSWORD@clustercl.mrszj.azure.mongodb.net/demo?authSource=admin" \
+		--apiVersion 1 \
+		--quiet \
+		--eval 'print("Inserting document..."); \
+			db.getCollection("demo-jit").insertOne({ name: "John Doe", age: 27 }); \
+			print("\nCurrent documents in collection:"); \
+			db.getCollection("demo-jit").find().pretty()' 
