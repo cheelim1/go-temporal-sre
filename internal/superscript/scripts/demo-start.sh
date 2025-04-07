@@ -15,8 +15,8 @@ IFS=$'\n\t'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Define application paths and configuration
-readonly APP_BIN="/Users/leow/GOMOD/go-temporal-sre/bin/superscript"
-readonly APP_LOG="/Users/leow/GOMOD/go-temporal-sre/superscript.log"
+readonly APP_BIN="${SCRIPT_DIR}/../../bin/superscript"
+readonly APP_LOG="${SCRIPT_DIR}/../../logs/superscript.log"
 readonly APP_PORT=8080
 readonly TEMPORAL_PORT=7233
 readonly MAX_RETRIES=5
