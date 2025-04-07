@@ -9,10 +9,12 @@ server:
 present:
 	@present -notes
 
+#run beforehand
 start-temporal:
 	@echo "Start Temporal Server"
 	@temporal server start-dev --http-port 9090 --ui-port 3001 --metrics-port 9091 --log-level info
 
+#skip
 start-kilcron:
 	@echo "Start kilcron .."
 	@cd cmd/kilcron && go run debug.go worker.go main.go
@@ -27,19 +29,22 @@ run-script:
 # SuperScript Demo Targets
 .PHONY: superscript-demo-1 superscript-start superscript-demo-2 superscript-demo-3 superscript-demo-4 superscript-stop
 
+#run beforehand
 superscript-setup:
 	@echo "Running SuperScript Demo: Setup and Build"
 	@cd ./internal/superscript/scripts && ./demo-1-setup.sh
 	# @go build -o bin/superscript ./cmd/superscript/
 
+#run beforehand
 superscript-start:
 	@echo "Starting SuperScript Application"
 	# chmod +x ./internal/superscript/scripts/demo-start.sh
-	@./internal/superscript/scripts/demo-start.sh
+	#@./internal/superscript/scripts/demo-start.sh
+	go run cmd/superscript/*.go
 
 superscript-demo-2:
 	@echo "Running SuperScript Demo 2: Traditional Non-Idempotent Script"
-	@./internal/superscript/scripts/demo-2-traditional.sh
+	@./internal/superscript/scripts/traditional_payment_collection.sh
 
 superscript-demo-3:
 	@echo "Running SuperScript Demo 3: Single Payment Idempotent Workflow"
@@ -90,9 +95,9 @@ jit-demo-stop:
 	@pkill -f "streamlit run app.py" || true 
 
 # MongoDB Demo Targets
-.PHONY: mongo-demo
+.PHONY: jit-mongo-demo
 
-mongo-demo:
+jit-mongo-demo:
 	@echo "Connecting to MongoDB and running demo commands..."
 	@cd demo/jit/demo-be && \
 		MONGODB_PASSWORD=$$(grep MONGODB_PASSWORD .env.local | cut -d '=' -f2) && \
