@@ -44,7 +44,7 @@ func DataEnrichmentWorkflow(
 		childCtx := workflow.WithChildOptions(
 			ctx,
 			workflow.ChildWorkflowOptions{
-				WorkflowID: fmt.Sprintf("enrich-" + customer.ID),
+				WorkflowID: fmt.Sprintf("enrich-%s", customer.ID),
 				TaskQueue:  TQ,
 			},
 		)
