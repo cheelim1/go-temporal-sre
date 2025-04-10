@@ -4,7 +4,6 @@ import (
 	data_enrichment "app/internal/data-enrichment"
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -39,15 +38,12 @@ func NewE2ETestActivities() *E2ETestActivities {
 }
 
 // FetchDemographics returns demographics data for the customer
-// Note: Works around the bug in EnrichSingleCustomerWorkflow where customerID is empty
 func (a *E2ETestActivities) FetchDemographics(customerID string) (data_enrichment.Demographics, error) {
 	a.FetchCount++
-	fmt.Println("FetchDemographics activity called with ID (may be empty due to workflow bug):", customerID)
+	fmt.Println("FetchDemographics activity called with ID:", customerID)
 	
-	// For batch workflows, mark as processed even if customerID is empty (due to bug)
-	if customerID != "" {
-		a.ProcessedIDs[customerID] = true
-	}
+	// Mark this customer ID as processed
+	a.ProcessedIDs[customerID] = true
 	
 	// Simulate a delay if configured to do so
 	if a.SimulateDelay {
@@ -60,8 +56,7 @@ func (a *E2ETestActivities) FetchDemographics(customerID string) (data_enrichmen
 	}
 	
 	// If configured to fail for a specific customer ID
-	// Only check non-empty IDs (to work around the workflow bug where empty IDs are passed)
-	if customerID != "" && customerID == a.FailOnCustomerID {
+	if customerID == a.FailOnCustomerID {
 		return data_enrichment.Demographics{}, fmt.Errorf("simulated error for customer: %s", customerID)
 	}
 
@@ -212,10 +207,9 @@ func TestE2EDataEnrichmentSingleCustomer(t *testing.T) {
 func TestE2EDataEnrichmentMultipleCustomers(t *testing.T) {
 	fmt.Println("Starting E2E test for multiple customer batch enrichment...")
 
-	// Skip batch test in the main test suite to avoid issues with workflow bug
-	// We'll keep the test for individual runs but skip it in the combined suite
-	if testing.Short() || strings.Contains(t.Name(), "TestAllE2E") {
-		t.Skip("Skipping batch test due to known workflow bug affecting batch processing")
+	// Skip only if running in short mode
+	if testing.Short() {
+		t.Skip("Skipping batch test in short mode")
 	}
 
 	// Setup test environment
@@ -271,8 +265,8 @@ func TestE2EDataEnrichmentErrorHandling(t *testing.T) {
 	fmt.Println("Starting E2E test for error handling...")
 
 	// Skip in the combined test suite due to workflow bug
-	if testing.Short() || strings.Contains(t.Name(), "TestAllE2E") {
-		t.Skip("Skipping error handling test due to known workflow bug affecting batch processing")
+	if testing.Short() {
+		t.Skip("Skipping error handling test in short mode")
 	}
 
 	// Setup test environment
@@ -287,8 +281,8 @@ func TestE2EDataEnrichmentErrorHandling(t *testing.T) {
 		Email: "error@example.com",
 	}
 
-	// Configure activity to fail for this customer
-	testActivities.FailOnCustomerID = "error-customer"
+	// Configure activity to fail for all fetch operations
+	testActivities.ShouldFailFetch = true
 
 	// Create a context with sufficient timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -313,12 +307,13 @@ func TestE2EDataEnrichmentErrorHandling(t *testing.T) {
 
 	// Verify we got an error from the activity
 	require.Error(t, err, "Expected an error from the workflow due to simulated activity failure")
-	assert.Contains(t, err.Error(), "error-customer", "Error should contain reference to the customer ID")
+	assert.Contains(t, err.Error(), "simulated demographics service error", "Error should contain reference to the simulated error")
 
-	// Verify the activity was called (execution count is 1 because it should have failed)
-	assert.Equal(t, 1, testActivities.FetchCount, "FetchDemographics should be called")
-	assert.Equal(t, 1, testActivities.MergeCount, "MergeData should be called and fail")
-	assert.Equal(t, 0, testActivities.StoreCount, "StoreEnrichedData should not be called after MergeData fails")
+	// Verify the activity was called with appropriate retry attempts
+	// The exact count depends on the retry policy, but should be greater than 1 due to retries
+	assert.GreaterOrEqual(t, testActivities.FetchCount, 1, "FetchDemographics should be called at least once")
+	assert.Equal(t, 0, testActivities.MergeCount, "MergeData should not be called after FetchDemographics fails")
+	assert.Equal(t, 0, testActivities.StoreCount, "StoreEnrichedData should not be called after FetchDemographics fails")
 
 	fmt.Println("✅ Error handling test passed with expected failure: ", err)
 }
@@ -409,16 +404,11 @@ func TestE2E(t *testing.T) {
 }
 
 // TestAllE2E runs all E2E tests in a specific order
-// Note: Some tests that depend on the batch workflow are skipped due to the workflow bug
 func TestAllE2E(t *testing.T) {
 	t.Run("Single", TestE2EDataEnrichmentSingleCustomer)
-	t.Run("Multiple", TestE2EDataEnrichmentMultipleCustomers) // Will be skipped due to workflow bug
-	t.Run("ErrorHandling", TestE2EDataEnrichmentErrorHandling) // Will be skipped due to workflow bug
+	t.Run("Multiple", TestE2EDataEnrichmentMultipleCustomers)
+	t.Run("ErrorHandling", TestE2EDataEnrichmentErrorHandling)
 	t.Run("Idempotency", TestE2EDataEnrichmentIdempotency)
-
-	fmt.Println("Note: Some tests were skipped due to the known bug in EnrichSingleCustomerWorkflow")
-	fmt.Println("where customerID is not passed to FetchDemographics activity.")
-	fmt.Println("This affects batch workflow operations. Fix the bug and all tests will pass.")
 }
 
 

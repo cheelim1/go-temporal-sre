@@ -81,7 +81,7 @@ func EnrichSingleCustomerWorkflow(
 
 	// Calls a external data source to have enriched data to work with .
 	var demographics Demographics
-	if err := workflow.ExecuteActivity(actx, dea.FetchDemographics).Get(ctx, &demographics); err != nil {
+	if err := workflow.ExecuteActivity(actx, dea.FetchDemographics, customer.ID).Get(ctx, &demographics); err != nil {
 		return EnrichedCustomer{}, err
 	}
 
