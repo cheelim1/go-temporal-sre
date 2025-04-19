@@ -2,6 +2,7 @@ package data_enrichment
 
 import (
 	"fmt"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 	"time"
 )
@@ -74,28 +75,33 @@ func EnrichSingleCustomerWorkflow(
 		workflow.ActivityOptions{
 			TaskQueue:           TQ,
 			StartToCloseTimeout: 5 * time.Second,
+			RetryPolicy: &temporal.RetryPolicy{
+				MaximumAttempts: 2,
+			}, // default policy will try 10 times ..
 		},
 	)
 
-	dea := DataEnrichmentActivities{}
+	//dea := DataEnrichmentActivities{}
 
 	// Calls a external data source to have enriched data to work with .
 	var demographics Demographics
-	if err := workflow.ExecuteActivity(actx, dea.FetchDemographics, customer.ID).Get(ctx, &demographics); err != nil {
+	if err := workflow.ExecuteActivity(actx, "FetchDemographics", customer.ID).Get(ctx, &demographics); err != nil {
+		// DEBUG
+		//fmt.Println("ATTEMPT:", workflow.GetInfo(ctx).Attempt)
 		return EnrichedCustomer{}, err
 	}
 
 	// Here we can do further local transformation
 	// Arguably it might be deterministic if simple enough; no need to use Activities
 	var enriched EnrichedCustomer
-	if err := workflow.ExecuteActivity(actx, dea.MergeData, customer, demographics).Get(ctx, &enriched); err != nil {
+	if err := workflow.ExecuteActivity(actx, "MergeData", customer, demographics).Get(ctx, &enriched); err != nil {
 		return EnrichedCustomer{}, err
 	}
 
 	// Arguably; this might instead be sending to another workflow which deals with
 	// orchestrating global messaging; a reverse ETL
 	// This store might be a S3 or a DynamoDB
-	if err := workflow.ExecuteActivity(actx, dea.StoreEnrichedData, enriched).Get(ctx, nil); err != nil {
+	if err := workflow.ExecuteActivity(actx, "StoreEnrichedData", enriched).Get(ctx, nil); err != nil {
 		return EnrichedCustomer{}, err
 	}
 

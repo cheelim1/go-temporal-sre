@@ -11,6 +11,8 @@ func (a *DataEnrichmentActivities) FetchDemographics(customerID string) (Demogra
 }
 
 func (a *DataEnrichmentActivities) MergeData(customer Customer, demographics Demographics) (EnrichedCustomer, error) {
+	// Simulate complex setup
+	time.Sleep(30 * time.Second)
 	return EnrichedCustomer{customer, demographics}, nil
 }
 

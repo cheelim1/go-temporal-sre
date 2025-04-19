@@ -3,11 +3,13 @@ package data_enrichment_test
 import (
 	data_enrichment "app/internal/data-enrichment"
 	"fmt"
-	"testing"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/testsuite"
+	"go.temporal.io/sdk/workflow"
+	"testing"
+	"time"
 )
 
 // TestActivities provides test implementations of the activities
@@ -43,6 +45,8 @@ func TestSingleWorkflowHappyPath(t *testing.T) {
 	testActivities.FetchDemographicsFunc = func(customerID string) (data_enrichment.Demographics, error) {
 		// No delay in test environment
 		return data_enrichment.Demographics{Age: 30, Location: "Test Location"}, nil
+		// Below will fail the TDD
+		//return data_enrichment.Demographics{}, fmt.Errorf("some error")
 	}
 
 	testActivities.MergeDataFunc = func(customer data_enrichment.Customer, demographics data_enrichment.Demographics) (data_enrichment.EnrichedCustomer, error) {
@@ -210,18 +214,38 @@ func TestTimeoutHandlingScenario(t *testing.T) {
 
 	// Track if the activity was called
 	activityCalled := false
+	activityCount := 0
+	activityCompleted := 0
 
 	// Configure the activity to simulate a timeout
 	testActivities.FetchDemographicsFunc = func(customerID string) (data_enrichment.Demographics, error) {
 		activityCalled = true
-		// Simulate a timeout by returning a timeout error
-		return data_enrichment.Demographics{}, fmt.Errorf("activity timeout")
+		activityCount++
+		fmt.Println("ACT_COUNT:", activityCount)
+		if activityCount < 5 {
+			time.Sleep(time.Second)
+			// Simulate a timeout by returning a timeout error
+			return data_enrichment.Demographics{}, fmt.Errorf("activity timeout")
+		}
+		activityCompleted++
+		return data_enrichment.Demographics{Age: 45, Location: "KL Malaysia"}, nil
 	}
 
 	// Register workflows and activities
-	env.RegisterWorkflow(data_enrichment.DataEnrichmentWorkflow)
-	env.RegisterWorkflow(data_enrichment.EnrichSingleCustomerWorkflow)
-	env.RegisterActivity(testActivities.FetchDemographics)
+	//env.RegisterWorkflow(data_enrichment.DataEnrichmentWorkflow)
+	//env.RegisterWorkflow(data_enrichment.EnrichSingleCustomerWorkflow)
+	env.RegisterWorkflowWithOptions(data_enrichment.EnrichSingleCustomerWorkflow, workflow.RegisterOptions{
+		//Name:                          "bobo", // Has effect if called with string; no effect if with struct
+		DisableAlreadyRegisteredCheck: false,
+		VersioningBehavior:            workflow.VersioningBehavior(2),
+	})
+
+	//env.RegisterActivity(testActivities.FetchDemographics)
+	env.RegisterActivityWithOptions(testActivities.FetchDemographics, activity.RegisterOptions{
+		Name:                          "foo", // Does not seem to have effect
+		DisableAlreadyRegisteredCheck: false,
+		SkipInvalidStructFunctions:    false,
+	})
 	env.RegisterActivity(testActivities.MergeData)
 	env.RegisterActivity(testActivities.StoreEnrichedData)
 
@@ -229,7 +253,7 @@ func TestTimeoutHandlingScenario(t *testing.T) {
 	testCustomer := data_enrichment.Customer{ID: "timeout-id", Name: "Timeout User", Email: "timeout@example.com"}
 
 	// Execute the workflow
-	env.ExecuteWorkflow(data_enrichment.EnrichSingleCustomerWorkflow, testCustomer)
+	env.ExecuteWorkflow("EnrichSingleCustomerWorkflow", testCustomer)
 
 	// Verify workflow completed with an error
 	require.True(t, env.IsWorkflowCompleted())
@@ -237,6 +261,7 @@ func TestTimeoutHandlingScenario(t *testing.T) {
 
 	// Verify the activity was called
 	require.True(t, activityCalled, "FetchDemographics should have been called")
+	assert.Equal(t, 0, activityCompleted, fmt.Sprintf("Activity count should be 1 with rety %d", activityCount))
 }
 
 // Note: Integration tests with real Temporal DevServer have been moved to e2e_test.go file.
@@ -249,7 +274,7 @@ func TestActivityFailureMock(t *testing.T) {
 	// Setup test activities with an error
 	testActivities := new(TestActivities)
 	activityError := fmt.Errorf("demographics service unavailable")
-	
+
 	// Track if the activity was called
 	fetchCalled := false
 	testActivities.FetchDemographicsFunc = func(customerID string) (data_enrichment.Demographics, error) {
@@ -284,7 +309,7 @@ func TestPartialFailureMock(t *testing.T) {
 
 	// Setup test activities
 	testActivities := new(TestActivities)
-	
+
 	// Setup test data with multiple customers
 	testCustomers := []data_enrichment.Customer{
 		{ID: "success-1", Name: "Success One", Email: "success1@example.com"},
@@ -343,7 +368,3 @@ func TestPartialFailureMock(t *testing.T) {
 		assert.Equal(t, expectedSuccessful, len(results), "Should have results only for successful customers")
 	}
 }
-
-
-
-
