@@ -8,26 +8,27 @@ This document outlines the project structure and guidelines for contributing to 
 go-temporal-sre/
 ├── cmd/                    # Main application entry points
 │   ├── worker/            # Centralized Temporal worker
-│   └── server/            # HTTP server for demos
+│   └── demos/             # Demo applications
+│       ├── batch/         # Batch processing demo
+│       ├── kilcron/       # Kilcron demo
+│       ├── superscript/   # Script execution demo
+│       └── jit/           # Just-in-time processing demo
 ├── internal/              # Private application code
 │   ├── worker/           # Shared worker implementation
-│   │   ├── config/       # Worker configuration
-│   │   ├── activities/   # Shared activities
-│   │   └── workflows/    # Shared workflows
-│   ├── common/           # Shared utilities
-│   │   ├── logger/       # Logging utilities
-│   │   ├── metrics/      # Metrics collection
-│   │   └── utils/        # Common utilities
-│   └── features/         # Feature-specific implementations
-│       ├── batch/        # Batch processing
-│       ├── enrichment/   # Data enrichment
-│       └── superscript/  # Script execution
-├── docs/                 # Documentation
-│   ├── architecture/    # Architecture diagrams
-│   └── guides/          # How-to guides
-└── test/                # Test utilities and fixtures
-    ├── fixtures/        # Test data
-    └── utils/           # Test utilities
+│   │   └── config/       # Worker configuration
+│   ├── features/         # Feature-specific implementations
+│   │   ├── batch/        # Batch processing
+│   │   ├── data-enrichment/ # Data enrichment
+│   │   ├── kilcron/      # Kilcron feature
+│   │   ├── superscript/  # Script execution
+│   │   └── jit/          # Just-in-time processing
+│   ├── demos/            # Demo-specific implementations
+│   │   ├── batch/        # Batch demo
+│   │   ├── data-enrichment/ # Data enrichment demo
+│   │   ├── kilcron/      # Kilcron demo
+│   │   ├── superscript/  # Script execution demo
+│   │   └── jit/          # JIT demo
+│   └── shared/           # Shared utilities and common code
 ```
 
 ## Key Components
@@ -38,22 +39,17 @@ The project uses a centralized Temporal worker implementation located in `intern
 - Supports custom activities and workflows
 - Handles common concerns like logging and metrics
 
-### Shared Utilities
-Common utilities are located in `internal/common/`:
-- Logging utilities
-- Metrics collection
-- Common helper functions
-
 ### Feature Implementation
 Feature-specific code is organized in `internal/features/`:
 - Each feature is self-contained
 - Can be easily added or removed
 - Shares common utilities and worker
 
-### Demos
-Demo applications are organized in `demos/`:
-- Each demo is self-contained
-- Uses shared worker and utilities
+### Demo Applications
+Demo applications are organized in both `cmd/demos/` and `internal/demos/`:
+- `cmd/demos/`: Contains the main entry points for each demo
+- `internal/demos/`: Contains the implementation details for each demo
+- Each demo is self-contained and uses shared worker and utilities
 - Includes documentation and examples
 
 ## Adding New Features
@@ -71,7 +67,7 @@ Configuration is managed through:
 - Configuration files
 - Command-line flags
 
-See `pkg/config/` for details.
+See `internal/worker/config/` for details.
 
 ## Testing
 

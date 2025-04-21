@@ -13,6 +13,7 @@ IFS=$'\n\t'
 
 # Get script directory (safer approach for sourced scripts)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 
 # Define color codes using tput (more portable than ANSI escape sequences)
 if [[ -t 1 ]]; then  # Check if stdout is a terminal
@@ -64,8 +65,8 @@ main() {
     print_message "${GREEN}${BOLD}" "=== Demo 1: Building SuperScript ==="
     print_message "${YELLOW}" "Building the SuperScript application"
 
-    # Commented out build steps - uncomment if needed
-     cd "${SCRIPT_DIR}/../../.." && go build -o ./bin/superscript ./cmd/superscript/
+    # Build the application
+    cd "${PROJECT_ROOT}" && go build -o ./bin/superscript ./cmd/demos/superscript/
 
     print_message "${GREEN}" "Build complete! The binary is now ready."
     print_message "${YELLOW}" "Next steps:"

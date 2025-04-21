@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"app/internal/superscript"
+	"app/internal/features/superscript"
 
 	"github.com/bitfield/script"
 	"go.temporal.io/api/enums/v1"

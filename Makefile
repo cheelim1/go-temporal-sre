@@ -17,14 +17,14 @@ start-temporal:
 #skip
 start-kilcron:
 	@echo "Start kilcron .."
-	@cd cmd/kilcron && go run debug.go worker.go main.go
+	@cd cmd/demos/kilcron && go run main.go
 
 stop:
 	@kill `pgrep temporal`
 
 run-script:
 	@echo "Demo non-Idempotent script. Do NOT run twice!!"
-	@cd ./internal/superscript/scripts && ./traditional_payment_collection.sh
+	@cd ./internal/features/superscript/scripts && ./traditional_payment_collection.sh
 
 # SuperScript Demo Targets
 .PHONY: superscript-demo-1 superscript-start superscript-demo-2 superscript-demo-3 superscript-demo-4 superscript-stop
@@ -32,31 +32,28 @@ run-script:
 #run beforehand
 superscript-setup:
 	@echo "Running SuperScript Demo: Setup and Build"
-	@cd ./internal/superscript/scripts && ./demo-1-setup.sh
-	# @go build -o bin/superscript ./cmd/superscript/
+	@cd ./internal/features/superscript/scripts && ./demo-1-setup.sh
 
 #run beforehand
 superscript-start:
 	@echo "Starting SuperScript Application"
-	# chmod +x ./internal/superscript/scripts/demo-start.sh
-	#@./internal/superscript/scripts/demo-start.sh
-	go run cmd/superscript/*.go
+	go run cmd/demos/superscript/*.go
 
 superscript-demo-2:
 	@echo "Running SuperScript Demo 2: Traditional Non-Idempotent Script"
-	@./internal/superscript/scripts/traditional_payment_collection.sh
+	@./internal/features/superscript/scripts/traditional_payment_collection.sh
 
 superscript-demo-3:
 	@echo "Running SuperScript Demo 3: Single Payment Idempotent Workflow"
-	@./internal/superscript/scripts/demo-3-single-payment.sh
+	@./internal/features/superscript/scripts/demo-3-single-payment.sh
 
 superscript-demo-4:
 	@echo "Running SuperScript Demo 4: Orchestrator Workflow"
-	@./internal/superscript/scripts/demo-4-orchestrator.sh
+	@./internal/features/superscript/scripts/demo-4-orchestrator.sh
 
 superscript-stop:
 	@echo "Stopping SuperScript Application"
-	@./internal/superscript/scripts/demo-stop.sh 
+	@./internal/features/superscript/scripts/demo-stop.sh 
 
 # JIT Demo Targets
 .PHONY: jit-demo-start jit-server jit-fe jit-demo-stop jit-deps
@@ -69,16 +66,16 @@ jit-deps:
 ##ensure start-temporal is running
 start-jit-worker: jit-deps
 	@echo "Starting Temporal JIT Worker ..."
-	@cd demo/jit/demo-be && PATH="$$(go env GOPATH)/bin:$$PATH" godotenv -f .env.local go run cmd/worker/main.go
+	@cd internal/demos/jit && PATH="$$(go env GOPATH)/bin:$$PATH" godotenv -f .env.local go run main.go
 
 ##ensure start-temporal is running
 start-jit-server: jit-deps
 	@echo "Starting Backend Server..."
-	@cd demo/jit/demo-be && PATH="$$(go env GOPATH)/bin:$$PATH" godotenv -f .env.local go run cmd/server/main.go
+	@cd internal/demos/jit && PATH="$$(go env GOPATH)/bin:$$PATH" godotenv -f .env.local go run server.go
 
 start-jit-fe:
 	@echo "Starting Streamlit Frontend..."
-	@cd demo/jit/demo-fe && python3 -m streamlit run app.py
+	@cd internal/demos/jit && python3 -m streamlit run app.py
 
 jit-demo-start:
 	@echo "Starting JIT Demo (all components)..."
@@ -90,8 +87,8 @@ jit-demo-start:
 jit-demo-stop:
 	@echo "Stopping JIT Demo components..."
 	@make stop  # This will stop the Temporal server
-	@pkill -f "cmd/worker/main.go" || true
-	@pkill -f "cmd/server/main.go" || true
+	@pkill -f "internal/demos/jit/main.go" || true
+	@pkill -f "internal/demos/jit/server.go" || true
 	@pkill -f "streamlit run app.py" || true 
 
 # MongoDB Demo Targets
@@ -99,7 +96,7 @@ jit-demo-stop:
 
 jit-mongo-demo:
 	@echo "Connecting to MongoDB and running demo commands..."
-	@cd demo/jit/demo-be && \
+	@cd internal/demos/jit && \
 		MONGODB_PASSWORD=$$(grep MONGODB_PASSWORD .env.local | cut -d '=' -f2) && \
 		mongosh "mongodb+srv://demo-user:$$MONGODB_PASSWORD@clustercl.mrszj.azure.mongodb.net/demo?authSource=admin" \
 		--apiVersion 1 \
