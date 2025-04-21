@@ -22,9 +22,9 @@ local_temporal.db
 go.work
 go.work.sum
 
-# env file
-*.env
-demo/jit/demo-be/.env.local
+# Ignore all .env and .env.local files
+**/.env
+**/.env.local
 
 # Ignore binary folder
 bin
