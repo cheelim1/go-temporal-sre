@@ -24,7 +24,7 @@ go.work.sum
 
 # Ignore all .env and .env.local files
 **/.env
-**/.env.local
+#**/.env.local
 
 # Ignore binary folder
 bin
