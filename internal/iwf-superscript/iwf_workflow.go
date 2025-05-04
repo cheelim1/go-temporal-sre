@@ -3,7 +3,7 @@ package iwfsuperscript
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"app/internal/superscript"
@@ -11,24 +11,24 @@ import (
 	"github.com/indeedeng/iwf-golang-sdk/iwf"
 )
 
-// simpleLogger is a simple implementation of the logger interface
-type simpleLogger struct{}
-
-func (l *simpleLogger) Debug(msg string, keyvals ...interface{}) {
-	log.Printf("[DEBUG] %s %v", msg, keyvals)
-}
-
-func (l *simpleLogger) Info(msg string, keyvals ...interface{}) {
-	log.Printf("[INFO] %s %v", msg, keyvals)
-}
-
-func (l *simpleLogger) Warn(msg string, keyvals ...interface{}) {
-	log.Printf("[WARN] %s %v", msg, keyvals)
-}
-
-func (l *simpleLogger) Error(msg string, keyvals ...interface{}) {
-	log.Printf("[ERROR] %s %v", msg, keyvals)
-}
+//// slog.Logger is a simple implementation of the logger interface
+//type slog.Logger struct{}
+//
+//func (l *slog.Logger) Debug(msg string, keyvals ...interface{}) {
+//	log.Printf("[DEBUG] %s %v", msg, keyvals)
+//}
+//
+//func (l *slog.Logger) Info(msg string, keyvals ...interface{}) {
+//	log.Printf("[INFO] %s %v", msg, keyvals)
+//}
+//
+//func (l *slog.Logger) Warn(msg string, keyvals ...interface{}) {
+//	log.Printf("[WARN] %s %v", msg, keyvals)
+//}
+//
+//func (l *slog.Logger) Error(msg string, keyvals ...interface{}) {
+//	log.Printf("[ERROR] %s %v", msg, keyvals)
+//}
 
 const (
 	// State names
@@ -102,14 +102,11 @@ func (s *CollectPaymentState) Decide(ctx iwf.WorkflowContext, input iwf.Object, 
 // Execute handles the payment collection activity
 func (s *CollectPaymentState) Execute(ctx iwf.WorkflowContext, input iwf.Object, commandResults iwf.CommandResults, persistence iwf.Persistence, communication iwf.Communication) (*iwf.StateDecision, error) {
 	// Use a simple logger
-	logger := &simpleLogger{}
+	logger := &slog.Logger{}
 
 	var params superscript.SinglePaymentWorkflowParams
-	err := input.Get(&params) // Explicitly assign error
-	if err != nil { // Explicitly check error
-		logger.Error("Failed to decode input", "error", err)
-		return nil, err
-	}
+	input.Get(&params)
+	// What happens when it is null or error?
 
 	logger.Info("Starting payment collection", "orderID", params.OrderID)
 	startTime := time.Now()
@@ -206,7 +203,7 @@ func (s *StartChildrenState) WaitUntil(ctx iwf.WorkflowContext, input iwf.Object
 // Decide processes the results of child workflows
 func (s *StartChildrenState) Decide(ctx iwf.WorkflowContext, input iwf.Object, commandResults iwf.CommandResults, persistence iwf.Persistence, communication iwf.Communication) (*iwf.StateDecision, error) {
 	// Use a simple logger
-	logger := &simpleLogger{}
+	logger := &slog.Logger{}
 
 	// Retrieve the order IDs from data attribute
 	var orderIDs []string
@@ -229,12 +226,12 @@ func (s *StartChildrenState) Decide(ctx iwf.WorkflowContext, input iwf.Object, c
 		// In a real implementation, we would extract the result from the command results
 		// For now, we'll create a mock result
 		result := superscript.PaymentResult{
-			OrderID: orderID,
-			Success: true,
-			Output:  "Payment processed successfully",
+			OrderID:  orderID,
+			Success:  true,
+			Output:   "Payment processed successfully",
 			ExitCode: 0,
 		}
-		
+
 		// No errors in our mock implementation
 		var err error
 
@@ -283,14 +280,12 @@ func (s *StartChildrenState) Decide(ctx iwf.WorkflowContext, input iwf.Object, c
 // Start initiates child workflows for each order ID
 func (s *StartChildrenState) Start(ctx iwf.WorkflowContext, input iwf.Object, persistence iwf.Persistence, communication iwf.Communication) (*iwf.CommandRequest, error) {
 	// Use a simple logger
-	logger := &simpleLogger{}
+	logger := &slog.Logger{}
 
 	// Extract parameters from input
 	var params superscript.OrchestratorWorkflowParams
-	err := input.Get(&params) // Fix: Assign error
-	if err != nil { // Fix: Check error
-		return nil, fmt.Errorf("unable to decode input for StartChildrenState: %w", err)
-	}
+	input.Get(&params)
+	// TODO: FIgure out error handling ..
 
 	// Set default concurrency if not specified
 	concurrency := params.MaxConcurrent
@@ -317,10 +312,10 @@ func (s *StartChildrenState) Start(ctx iwf.WorkflowContext, input iwf.Object, pe
 	if len(params.OrderIDs) == 0 {
 		logger.Info("No OrderIDs to process, completing workflow.")
 		batchResult.EndTime = time.Now()
-		
+
 		// Store the batch result for the Execute method
 		persistence.SetDataAttribute("batchResult", batchResult)
-		
+
 		// Skip executing child workflows
 		return &iwf.CommandRequest{}, nil
 	}
@@ -332,22 +327,31 @@ func (s *StartChildrenState) Start(ctx iwf.WorkflowContext, input iwf.Object, pe
 	for _, orderID := range params.OrderIDs { // Fix: Replace unused 'i' with '_'
 		childWorkflowID := fmt.Sprintf("%s-%s", ctx.GetWorkflowId(), orderID)
 		cmdID := fmt.Sprintf("child-%s", orderID) // Unique command ID
-		childInput := superscript.SinglePaymentWorkflowParams{
-			OrderID: orderID,
-			// AmountCents might need to come from params if needed by child
-		}
+		// what is childInput
+		//childInput := superscript.SinglePaymentWorkflowParams{
+		//	OrderID: orderID,
+		//	// AmountCents might need to come from params if needed by child
+		//}
 
 		// Correct command creation for iwf-golang-sdk v1.8.0
-		cmd := iwf.ExecuteWorkflow{
-			WorkflowType: "single-payment-wf",
-			Input:        childInput,
-			WorkflowOptions: &iwf.WorkflowOptions{
-				// v1.8.0: Use field WorkflowIdReusePolicy (lowercase d)
-				WorkflowIdReusePolicy: iwf.REJECT_DUPLICATE, // v1.8.0: Use correct constant
-				// v1.8.0: Use field WorkflowId (lowercase d)
-				WorkflowId: childWorkflowID,
-			},
+		// Is this correct?
+		cmd := iwf.Command{
+			CommandId:              childWorkflowID,
+			CommandType:            "",
+			TimerCommand:           nil,
+			SignalCommand:          nil,
+			InternalChannelCommand: nil,
 		}
+		//cmd := iwf.ExecuteWorkflow{
+		//	WorkflowType: "single-payment-wf",
+		//	Input:        childInput,
+		//	WorkflowOptions: &iwf.WorkflowOptions{
+		//		// v1.8.0: Use field WorkflowIdReusePolicy (lowercase d)
+		//		WorkflowIdReusePolicy: iwf.REJECT_DUPLICATE, // v1.8.0: Use correct constant
+		//		// v1.8.0: Use field WorkflowId (lowercase d)
+		//		WorkflowId: childWorkflowID,
+		//	},
+		//}
 		commands = append(commands, cmd)
 		commandIDs = append(commandIDs, cmdID) // Store command ID
 	}
@@ -360,16 +364,16 @@ func (s *StartChildrenState) Start(ctx iwf.WorkflowContext, input iwf.Object, pe
 	commandRequest := &iwf.CommandRequest{
 		Commands: commands,
 	}
-	
+
 	return commandRequest, nil
 }
 
 // Execute is required by the WorkflowState interface, even if Start/Decide are used.
 // It can often be a no-op or simply return a nil decision if Start/Decide handle all logic.
 func (s *StartChildrenState) Execute(ctx iwf.WorkflowContext, input iwf.Object, commandResults iwf.CommandResults, persistence iwf.Persistence, communication iwf.Communication) (*iwf.StateDecision, error) {
-    // Since Start issues commands and Decide processes them, Execute might not need to do anything.
-    // Returning nil decision indicates no immediate state transition from Execute itself.
-    return nil, nil
+	// Since Start issues commands and Decide processes them, Execute might not need to do anything.
+	// Returning nil decision indicates no immediate state transition from Execute itself.
+	return nil, nil
 }
 
 // AggregateResultsState implements the state that finalizes the batch results
@@ -399,13 +403,11 @@ func (s *AggregateResultsState) Decide(ctx iwf.WorkflowContext, input iwf.Object
 // Execute finalizes the batch results
 func (s *AggregateResultsState) Execute(ctx iwf.WorkflowContext, input iwf.Object, commandResults iwf.CommandResults, persistence iwf.Persistence, communication iwf.Communication) (*iwf.StateDecision, error) {
 	// Use a simple logger
-	logger := &simpleLogger{}
+	logger := &slog.Logger{}
 
 	var batchResult superscript.BatchResult
-	err := input.Get(&batchResult) // Fix: Assign error
-	if err != nil { // Fix: Check error
-		return nil, fmt.Errorf("unable to decode input for AggregateResultsState: %w", err)
-	}
+	input.Get(&batchResult)
+	// TODO: How to catch error ..
 
 	// Set the end time
 	batchResult.EndTime = time.Now()

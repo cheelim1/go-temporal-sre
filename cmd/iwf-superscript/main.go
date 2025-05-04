@@ -10,42 +10,42 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
-	"sync"
 
 	"github.com/indeedeng/iwf-golang-sdk/gen/iwfidl"
 	"github.com/indeedeng/iwf-golang-sdk/iwf"
 )
 
 const (
-	defaultApiPort     = "8081"
-	defaultWorkerPort = "8802" // Default iWF worker port
-	workflowType       = "YourWorkflowType" // Replace with actual type if needed by client
+	defaultApiPort    = "8081"
+	defaultWorkerPort = "8802"             // Default iWF worker port
+	workflowType      = "YourWorkflowType" // Replace with actual type if needed by client
 )
 
-// simpleLogger adapts to iwf.Logger
-type simpleLogger struct{}
-
-// Debugf implements iwf.Logger
-func (l *simpleLogger) Debug(msg string, keyvals ...interface{}) {
-	slog.Debug(msg, keyvals...)
-}
-
-// Infof implements iwf.Logger
-func (l *simpleLogger) Info(msg string, keyvals ...interface{}) {
-	slog.Info(msg, keyvals...)
-}
-
-// Warnf implements iwf.Logger
-func (l *simpleLogger) Warn(msg string, keyvals ...interface{}) {
-	slog.Warn(msg, keyvals...)
-}
-
-// Errorf implements iwf.Logger
-func (l *simpleLogger) Error(msg string, keyvals ...interface{}) {
-	slog.Error(msg, keyvals...)
-}
+//// simpleLogger adapts to iwf.Logger
+//type simpleLogger struct{}
+//
+//// Debugf implements iwf.Logger
+//func (l *simpleLogger) Debug(msg string, keyvals ...interface{}) {
+//	slog.Debug(msg, keyvals...)
+//}
+//
+//// Infof implements iwf.Logger
+//func (l *simpleLogger) Info(msg string, keyvals ...interface{}) {
+//	slog.Info(msg, keyvals...)
+//}
+//
+//// Warnf implements iwf.Logger
+//func (l *simpleLogger) Warn(msg string, keyvals ...interface{}) {
+//	slog.Warn(msg, keyvals...)
+//}
+//
+//// Errorf implements iwf.Logger
+//func (l *simpleLogger) Error(msg string, keyvals ...interface{}) {
+//	slog.Error(msg, keyvals...)
+//}
 
 func main() {
 	err := run()
@@ -57,7 +57,7 @@ func main() {
 }
 
 func run() error {
-	logger := &simpleLogger{}
+	logger := slog.Logger{}
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil))) // Configure slog
 
 	// --- Worker Setup ---
@@ -68,7 +68,7 @@ func run() error {
 
 	// Define worker options
 	workerOptions := iwf.WorkerOptions{
-		ObjectEncoder:         iwf.GetDefaultObjectEncoder(),
+		ObjectEncoder: iwf.GetDefaultObjectEncoder(),
 	}
 
 	// Call RegisterWorkflows to get the configured worker service and registry
@@ -77,9 +77,9 @@ func run() error {
 
 	// Create iWF Client using the registry from the worker service
 	clientOptions := iwf.ClientOptions{
-		ServerUrl:           iwfServerUrl,
-		WorkerUrl:           workerUrl,
-		ObjectEncoder:       iwf.GetDefaultObjectEncoder(),
+		ServerUrl:     iwfServerUrl,
+		WorkerUrl:     workerUrl,
+		ObjectEncoder: iwf.GetDefaultObjectEncoder(),
 	}
 	iwfClient := iwf.NewClient(registry, &clientOptions) // Use registry from worker setup
 

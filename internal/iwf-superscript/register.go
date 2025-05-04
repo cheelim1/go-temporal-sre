@@ -2,11 +2,11 @@ package iwfsuperscript
 
 import (
 	"fmt"
+	"log/slog"
 
 	"app/internal/superscript"
 
 	"github.com/indeedeng/iwf-golang-sdk/iwf"
-	tlog "go.temporal.io/sdk/log"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 // RegisterWorkflows registers all workflows and returns the configured WorkerService
 // and the Registry used.
 // It handles registry creation, activity/workflow instantiation, and registration.
-func RegisterWorkflows(workerOptions iwf.WorkerOptions, scriptBasePath string, logger tlog.Logger) (iwf.WorkerService, iwf.Registry) {
+func RegisterWorkflows(workerOptions iwf.WorkerOptions, scriptBasePath string, logger slog.Logger) (iwf.WorkerService, iwf.Registry) {
 	registry := iwf.NewRegistry()
 
 	// Instantiate activities

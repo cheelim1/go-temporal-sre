@@ -7,17 +7,16 @@ import (
 	"time"
 
 	"github.com/bitfield/script"
-	"go.temporal.io/sdk/log"
 )
 
 // Activities holds the configuration for script execution activities
 type Activities struct {
 	ScriptBasePath string
-	Logger         log.Logger
+	Logger         slog.Logger
 }
 
 // NewActivities creates a new instance of Activities
-func NewActivities(scriptBasePath string, logger log.Logger) *Activities {
+func NewActivities(scriptBasePath string, logger slog.Logger) *Activities {
 	return &Activities{
 		ScriptBasePath: scriptBasePath,
 		Logger:         logger,

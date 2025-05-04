@@ -4,10 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/indeedeng/iwf-golang-sdk/gen/iwfidl"
+	"log/slog"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"app/internal/iwf-superscript"
@@ -19,18 +18,18 @@ import (
 
 // Server represents an HTTP server for the iWF SuperScript API
 type Server struct {
-	Client       iwf.Client
-	Logger       iwf.Logger
-	Addr         string
-	Server       *http.Server
+	Client iwf.Client
+	Logger slog.Logger
+	Addr   string
+	Server *http.Server
 }
 
 // NewServer creates a new HTTP server
-func NewServer(iwfClient iwf.Client, logger iwf.Logger, addr string) *Server {
+func NewServer(iwfClient iwf.Client, logger slog.Logger, addr string) *Server {
 	return &Server{
-		Client:       iwfClient,
-		Logger:       logger,
-		Addr:         addr,
+		Client: iwfClient,
+		Logger: logger,
+		Addr:   addr,
 	}
 }
 
@@ -89,7 +88,7 @@ func (s *Server) handleRunSingle(w http.ResponseWriter, r *http.Request) {
 	// WorkflowID and TaskQueue are not set here. ID is passed directly to StartWorkflow.
 	// TaskQueue is configured on the worker.
 	options := &iwf.WorkflowOptions{
-		WorkflowIdReusePolicy: iwf.WorkflowIdReusePolicyRejectDuplicate,
+		WorkflowIdReusePolicy: iwfidl.DISALLOW_REUSE.Ptr(),
 	}
 
 	s.Logger.Info("Starting single payment workflow", "orderID", request.OrderID, "workflowID", workflowID)
@@ -114,8 +113,8 @@ func (s *Server) handleRunSingle(w http.ResponseWriter, r *http.Request) {
 			// Return response indicating that this was a duplicate request that was handled idempotently
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"message":      "Workflow already started and handled idempotently",
-				"workflow_id":  workflowID,
+				"message":     "Workflow already started and handled idempotently",
+				"workflow_id": workflowID,
 				// "run_id" could potentially be retrieved here if needed, but we don't have it directly
 			})
 			return
@@ -144,6 +143,8 @@ func (s *Server) handleRunSingle(w http.ResponseWriter, r *http.Request) {
 		"run_id":      runID, // runID is returned directly by StartWorkflow
 		"result":      result,
 	})
+
+	return
 }
 
 // handleRunBatch starts the orchestrator workflow to process multiple orders
@@ -170,7 +171,7 @@ func (s *Server) handleRunBatch(w http.ResponseWriter, r *http.Request) {
 	// Prepare workflow options
 	// WorkflowID and TaskQueue are not set here.
 	options := &iwf.WorkflowOptions{
-		WorkflowIdReusePolicy: iwf.WorkflowIdReusePolicyAllowDuplicate,
+		WorkflowIdReusePolicy: iwfidl.DISALLOW_REUSE.Ptr(),
 	}
 
 	s.Logger.Info("Starting orchestrator workflow", "orderCount", len(request.OrderIDs), "workflowID", workflowID)
@@ -204,8 +205,7 @@ func (s *Server) handleRunBatch(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleRunTraditional executes the traditional non-idempotent script directly
-// This is used for demonstration purposes to show the non-idempotent behavior
+// handleRunTraditional executes the traditional non-idempotent script directly - This is used for demonstration purposes to show the non-idempotent behavior
 func (s *Server) handleRunTraditional(w http.ResponseWriter, r *http.Request) {
 	orderID := r.URL.Query().Get("order_id")
 	if orderID == "" {
@@ -241,9 +241,9 @@ func (s *Server) handleRunTraditional(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// WaitForInterrupt blocks until an interrupt signal is received
-func WaitForInterrupt() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
-}
+//// WaitForInterrupt blocks until an interrupt signal is received
+//func WaitForInterrupt() {
+//	c := make(chan os.Signal, 1)
+//	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+//	<-c
+//}
