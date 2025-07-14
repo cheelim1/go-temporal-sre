@@ -52,7 +52,7 @@ func LoadConfig() *WorkerConfig {
 
 		// Default enabled features (all enabled by default)
 		EnabledFeatures: getEnvSlice("ENABLED_FEATURES", []string{
-			"kilcron", "superscript", "jit", "batch", "data-enrichment",
+			"kilcron", "superscript", "jit",
 		}),
 
 		// Default logging

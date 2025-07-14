@@ -145,6 +145,9 @@ func (cw *CentralizedWorker) Stop() {
 
 	cw.logger.Info("Stopping centralized worker")
 
+	// Signal shutdown to any waiting goroutines
+	close(cw.shutdown)
+
 	// Stop all workers
 	for taskQueue, w := range cw.workers {
 		cw.logger.Info("Stopping worker", "taskQueue", taskQueue)
