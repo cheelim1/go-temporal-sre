@@ -1,0 +1,36 @@
+# Example Configuration for go-temporal-sre
+# Copy this file to .env or set these environment variables
+
+# Temporal Configuration
+TEMPORAL_HOST=localhost:7233
+TEMPORAL_NAMESPACE=default
+
+# Worker Configuration
+MAX_CONCURRENT_ACTIVITIES=10
+MAX_CONCURRENT_WORKFLOWS=10
+
+# Feature Configuration
+# Comma-separated list of features to enable
+# Available features: kilcron, superscript, jit, batch, data-enrichment
+ENABLED_FEATURES=kilcron,superscript,jit
+
+# Logging Configuration
+LOG_LEVEL=INFO
+
+# HTTP Server Configuration
+HTTP_PORT=8080
+HTTP_HOST=localhost
+
+# Feature-specific Configuration
+SUPERSCRIPT_BASE_PATH=./internal/features/superscript/scripts/
+JIT_TASK_QUEUE=jit_access_task_queue
+BATCH_PROCESSING_QUEUE=batch_processing_task_queue
+KILCRON_TASK_QUEUE=kilcron_task_queue
+
+# Atlas/MongoDB Configuration (for JIT feature)
+ATLAS_PUBLIC_KEY=your_atlas_public_key_here
+ATLAS_PRIVATE_KEY=your_atlas_private_key_here
+ATLAS_PROJECT_ID=your_atlas_project_id_here
+
+# Optional: Override default task queue names
+# SUPERSCRIPT_TASK_QUEUE=superscript_task_queue 

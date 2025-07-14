@@ -14,13 +14,72 @@ start-temporal:
 	@echo "Start Temporal Server"
 	@temporal server start-dev --http-port 9090 --ui-port 3001 --metrics-port 9091 --log-level info
 
-#skip
-start-kilcron:
-	@echo "Start kilcron .."
-	@cd cmd/kilcron && go run debug.go worker.go main.go
-
 stop:
 	@kill `pgrep temporal`
+
+# Centralized Worker Targets
+.PHONY: worker start-worker kilcron-demo superscript-demo jit-demo jit-fe jit-fe-setup
+
+# Start centralized worker with all features
+start-worker:
+	@echo "Starting Centralized Temporal Worker"
+	@set -a; [ -f .env ] && source .env; set +a; go run cmd/worker/main.go
+
+# Start centralized worker with specific features
+start-worker-features:
+	@echo "Starting Centralized Worker with specific features: $(FEATURES)"
+	@set -a; [ -f .env ] && source .env; set +a; ENABLED_FEATURES=$(FEATURES) go run cmd/worker/main.go
+
+# Kilcron demo using centralized worker
+kilcron-demo:
+	@echo "Starting Kilcron Demo (using centralized worker)"
+	@set -a; [ -f .env ] && source .env; set +a; go run cmd/demos/kilcron/main.go
+
+# SuperScript demo using centralized worker
+superscript-demo:
+	@echo "Starting SuperScript Demo (using centralized worker)"
+	@set -a; [ -f .env ] && source .env; set +a; go run cmd/demos/superscript/main.go
+
+# JIT demo using centralized worker
+jit-demo:
+	@echo "Starting JIT Access Demo (using centralized worker)"
+	@set -a; [ -f .env ] && source .env; set +a; go run cmd/demos/jit/main.go
+
+# JIT frontend setup - create virtual environment and install dependencies
+jit-fe-setup:
+	@echo "Setting up JIT Frontend virtual environment..."
+	@cd demo/jit/demo-fe && python3 -m venv venv
+	@echo "Installing dependencies..."
+	@cd demo/jit/demo-fe && venv/bin/pip install -r requirements.txt
+	@echo "Setup complete! You can now run 'make jit-fe'"
+
+# JIT frontend (Streamlit app)
+jit-fe:
+	@echo "Starting JIT Access Frontend (Streamlit)"
+	@echo "Note: If setup not done, run 'make jit-fe-setup' first"
+	@cd demo/jit/demo-fe && venv/bin/streamlit run app.py
+
+# Legacy support - redirect to new demos
+start-kilcron: kilcron-demo
+	@echo "Note: start-kilcron now uses the centralized worker"
+
+# Build targets for the new structure
+build-all: build-worker build-demos
+
+build-worker:
+	@echo "Building centralized worker..."
+	@go build -o bin/centralized-worker cmd/worker/main.go
+
+build-demos:
+	@echo "Building demo applications..."
+	@go build -o bin/kilcron-demo cmd/demos/kilcron/main.go
+	@go build -o bin/superscript-demo cmd/demos/superscript/main.go
+	@go build -o bin/jit-demo cmd/demos/jit/main.go
+
+# Clean up build artifacts
+clean:
+	@echo "Cleaning up build artifacts..."
+	@rm -f bin/centralized-worker bin/kilcron-demo bin/superscript-demo bin/jit-demo
 
 run-script:
 	@echo "Demo non-Idempotent script. Do NOT run twice!!"
@@ -58,41 +117,14 @@ superscript-stop:
 	@echo "Stopping SuperScript Application"
 	@./internal/superscript/scripts/demo-stop.sh 
 
-# JIT Demo Targets
-.PHONY: jit-demo-start jit-server jit-fe jit-demo-stop jit-deps
+.PHONY: jit-demo-start jit-demo-stop
 
-jit-deps:
-	@echo "Checking and installing dependencies..."
-	@which godotenv >/dev/null 2>&1 || (echo "Installing godotenv..." && go install github.com/joho/godotenv/cmd/godotenv@latest)
-	@export PATH="$$(go env GOPATH)/bin:$$PATH"
-
-##ensure start-temporal is running
-start-jit-worker: jit-deps
-	@echo "Starting Temporal JIT Worker ..."
-	@cd demo/jit/demo-be && PATH="$$(go env GOPATH)/bin:$$PATH" godotenv -f .env.local go run cmd/worker/main.go
-
-##ensure start-temporal is running
-start-jit-server: jit-deps
-	@echo "Starting Backend Server..."
-	@cd demo/jit/demo-be && PATH="$$(go env GOPATH)/bin:$$PATH" godotenv -f .env.local go run cmd/server/main.go
-
-start-jit-fe:
-	@echo "Starting Streamlit Frontend..."
-	@cd demo/jit/demo-fe && python3 -m streamlit run app.py
-
-jit-demo-start:
-	@echo "Starting JIT Demo (all components)..."
-	@make start-jit-worker &
-	@make start-jit-server &
-	@sleep 5  # Give Temporal Server time to start
-	@make start-jit-fe
+jit-demo-start: jit-demo
+	@echo "Note: jit-demo-start now uses the centralized worker (jit-demo)"
 
 jit-demo-stop:
-	@echo "Stopping JIT Demo components..."
-	@make stop  # This will stop the Temporal server
-	@pkill -f "cmd/worker/main.go" || true
-	@pkill -f "cmd/server/main.go" || true
-	@pkill -f "streamlit run app.py" || true 
+	@echo "Stopping processes..."
+	@pkill -f "cmd/demos/jit/main.go" || true 
 
 # MongoDB Demo Targets
 .PHONY: jit-mongo-demo

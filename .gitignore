@@ -36,8 +36,12 @@ bin
 .idea
 
 # Ignore logs
+*.log
 superscript.log
 
 ## Personal .md
 personal.md
+
+# Python virtual environments
+demo/jit/demo-fe/venv/
 

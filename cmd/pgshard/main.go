@@ -2,8 +2,7 @@ package main
 
 import "fmt"
 
-
 func main() {
-  fmt.Println("Welcome to pgshard ..")
+	fmt.Println("Welcome to pgshard ..")
 
 }

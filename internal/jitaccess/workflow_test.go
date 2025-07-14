@@ -4,7 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cheelim1/go-temporal-sre/demo/jit/demo-be/internal/jitaccess"
+	"app/internal/jitaccess"
+
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/testsuite"
