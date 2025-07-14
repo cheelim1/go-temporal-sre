@@ -125,10 +125,17 @@ func (fm *FeatureManager) GetFeatureTaskQueues(featureName string) []string {
 
 // GetAllTaskQueues returns all task queues from all registered features
 func (fm *FeatureManager) GetAllTaskQueues() []string {
-	var allQueues []string
+	queueSet := make(map[string]struct{})
 	for _, feature := range fm.features {
 		queues := feature.GetTaskQueues()
-		allQueues = append(allQueues, queues...)
+		for _, queue := range queues {
+			queueSet[queue] = struct{}{}
+		}
+	}
+
+	var allQueues []string
+	for queue := range queueSet {
+		allQueues = append(allQueues, queue)
 	}
 	return allQueues
 }

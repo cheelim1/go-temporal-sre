@@ -28,7 +28,7 @@ func TestActivities_RunPaymentCollectionScript(t *testing.T) {
 	}{
 		{"case #0", fields{
 			ScriptBasePath: "./",
-			Logger:         slog.Default(),
+			Logger:         *slog.Default(),
 		}, args{
 			ctx:     context.Background(),
 			orderID: "ORD-1234", // Will fail script which expects int
