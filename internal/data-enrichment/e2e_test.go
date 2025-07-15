@@ -19,11 +19,11 @@ import (
 // E2ETestActivities implements test activities for E2E tests with various behaviors
 type E2ETestActivities struct {
 	// For tracking activity executions
-	FetchCount       int
-	MergeCount       int
-	StoreCount       int
-	ProcessedIDs     map[string]bool
-	
+	FetchCount   int
+	MergeCount   int
+	StoreCount   int
+	ProcessedIDs map[string]bool
+
 	// For controlling test behavior
 	ShouldFailFetch  bool
 	FailOnCustomerID string
@@ -41,10 +41,10 @@ func NewE2ETestActivities() *E2ETestActivities {
 func (a *E2ETestActivities) FetchDemographics(customerID string) (data_enrichment.Demographics, error) {
 	a.FetchCount++
 	fmt.Println("FetchDemographics activity called with ID:", customerID)
-	
+
 	// Mark this customer ID as processed
 	a.ProcessedIDs[customerID] = true
-	
+
 	// Simulate a delay if configured to do so
 	if a.SimulateDelay {
 		time.Sleep(100 * time.Millisecond)
@@ -54,7 +54,7 @@ func (a *E2ETestActivities) FetchDemographics(customerID string) (data_enrichmen
 	if a.ShouldFailFetch {
 		return data_enrichment.Demographics{}, fmt.Errorf("simulated demographics service error")
 	}
-	
+
 	// If configured to fail for a specific customer ID
 	if customerID == a.FailOnCustomerID {
 		return data_enrichment.Demographics{}, fmt.Errorf("simulated error for customer: %s", customerID)
@@ -79,7 +79,7 @@ func (a *E2ETestActivities) MergeData(customer data_enrichment.Customer, demogra
 		fmt.Printf("Simulating MergeData failure for customer: %s\n", customer.ID)
 		return data_enrichment.EnrichedCustomer{}, fmt.Errorf("simulated merge error for customer: %s", customer.ID)
 	}
-	
+
 	// Create the enriched customer
 	return data_enrichment.EnrichedCustomer{
 		Customer:     customer,
@@ -124,7 +124,7 @@ func setupE2ETestEnvironment(t *testing.T) (*testsuite.DevServer, client.Client,
 
 	// Create two workers - one for the workflow tasks and one for activity tasks
 	// This is critical because the workflow hardcodes activity task queue to "data-enrichment-demo"
-	
+
 	// 1. Worker for workflow tasks on our test queue
 	workflowWorker := worker.New(tempClient, taskQueue, worker.Options{})
 	workflowWorker.RegisterWorkflow(data_enrichment.DataEnrichmentWorkflow)
@@ -410,15 +410,3 @@ func TestAllE2E(t *testing.T) {
 	t.Run("ErrorHandling", TestE2EDataEnrichmentErrorHandling)
 	t.Run("Idempotency", TestE2EDataEnrichmentIdempotency)
 }
-
-
-
-
-
-
-
-
-
-
-
-

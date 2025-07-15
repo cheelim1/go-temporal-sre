@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cheelim1/go-temporal-sre/demo/jit/demo-be/internal/atlas"
+	"app/internal/atlas"
 )
 
 func TestInitAtlasClient_MissingEnv(t *testing.T) {

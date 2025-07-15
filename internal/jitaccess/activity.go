@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/cheelim1/go-temporal-sre/demo/jit/demo-be/internal/atlas"
+	"app/internal/atlas"
 )
 
 // GetUserRoleActivity is an activity that fetches the current role for a user from Atlas.
