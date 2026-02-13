@@ -33,4 +33,7 @@
 - Use overmind to start temporal-cli + air
 
 ## Specification
-<todo>
+
+- Review and follow the TECHSPEC.md for the requirements.  Instructions in this file will be supreme (in case of inconsistencies).
+- Ask if not clear
+

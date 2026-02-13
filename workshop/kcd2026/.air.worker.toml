@@ -1,0 +1,16 @@
+root = "."
+tmp_dir = "tmp/worker"
+
+[build]
+  cmd = "go build -o ./tmp/worker/main ./cmd/worker"
+  bin = "./tmp/worker/main"
+  include_ext = ["go"]
+  include_dir = ["cmd/worker", "pkg"]
+  exclude_dir = ["tmp", "bin"]
+  delay = 1000
+
+[log]
+  time = true
+
+[misc]
+  clean_on_exit = true

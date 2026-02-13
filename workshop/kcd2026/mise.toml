@@ -1,0 +1,53 @@
+[env]
+TEMPORAL_HOST = "localhost:7233"
+TEMPORAL_NAMESPACE = "default"
+TASK_QUEUE = "kcd2026-task-queue"
+BUILD_ID = "dev-build"
+LISTEN_ADDR = ":8080"
+
+[tools]
+go = "1.25"
+
+[tasks.test]
+description = "Run all tests (short mode, no external deps)"
+run = "go test -v -short -timeout 30s ./..."
+
+[tasks."test:all"]
+description = "Run all tests including integration tests"
+run = "go test -v -timeout 120s ./..."
+
+[tasks."test:workflows"]
+description = "Run workflow tests only"
+run = "go test -v -timeout 30s ./pkg/workflows/..."
+
+[tasks."test:cover"]
+description = "Run tests with coverage report"
+run = "go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out"
+
+[tasks.build]
+description = "Build all binaries"
+run = """
+go build -o bin/worker ./cmd/worker
+go build -o bin/app ./cmd/app
+go build -o bin/starter ./cmd/starter
+"""
+
+[tasks.lint]
+description = "Run Go vet"
+run = "go vet ./..."
+
+[tasks.dev]
+description = "Start development environment with overmind"
+run = "overmind start -f Procfile"
+
+[tasks.dev-stop]
+description = "Stop development environment"
+run = "overmind stop -f Procfile"
+
+[tasks.tidy]
+description = "Tidy go modules"
+run = "go mod tidy"
+
+[tasks.clean]
+description = "Clean build artifacts"
+run = "rm -rf bin/ coverage.out"

@@ -1,0 +1,34 @@
+{
+  "name": "001_create_users",
+  "operations": [
+    {
+      "create_table": {
+        "name": "users",
+        "columns": [
+          {
+            "name": "id",
+            "type": "serial",
+            "pk": true
+          },
+          {
+            "name": "username",
+            "type": "varchar(255)",
+            "unique": true,
+            "nullable": false
+          },
+          {
+            "name": "email",
+            "type": "varchar(255)",
+            "nullable": false
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp",
+            "default": "NOW()",
+            "nullable": false
+          }
+        ]
+      }
+    }
+  ]
+}

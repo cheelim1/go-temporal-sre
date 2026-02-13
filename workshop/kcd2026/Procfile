@@ -1,0 +1,3 @@
+temporal: temporal server start-dev --namespace default --db-filename /tmp/temporal-kcd2026.db
+worker: air -c .air.worker.toml
+app: air -c .air.app.toml
