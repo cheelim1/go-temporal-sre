@@ -38,7 +38,7 @@ func MaintenanceModeWorkflow(ctx workflow.Context, input MaintenanceRequest) (*M
 	enterCh := workflow.GetSignalChannel(ctx, SignalEnterMaintenance)
 	logger.Info("Waiting for enter_maintenance signal...")
 
-	var enterSignal interface{}
+	var enterSignal any
 	enterCh.Receive(ctx, &enterSignal)
 
 	logger.Info("Received enter_maintenance signal")
@@ -50,7 +50,7 @@ func MaintenanceModeWorkflow(ctx workflow.Context, input MaintenanceRequest) (*M
 	resumeCh := workflow.GetSignalChannel(ctx, SignalResume)
 	logger.Info("Waiting for resume signal...")
 
-	var resumeSignal interface{}
+	var resumeSignal any
 	resumeCh.Receive(ctx, &resumeSignal)
 
 	logger.Info("Received resume signal")

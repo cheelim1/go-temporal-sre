@@ -22,9 +22,9 @@ type App struct {
 	writePool *pgxpool.Pool
 
 	// Read pool (round-robin across replicas)
-	readMu       sync.RWMutex
-	readPools    []*pgxpool.Pool
-	readPoolIdx  atomic.Uint64
+	readMu      sync.RWMutex
+	readPools   []*pgxpool.Pool
+	readPoolIdx atomic.Uint64
 
 	// Maintenance mode
 	maintenance atomic.Bool
@@ -34,10 +34,10 @@ type App struct {
 
 // AppConfig configures the workload app
 type AppConfig struct {
-	PrimaryConnStr    string
-	ReplicaConnStrs   []string
-	ListenAddr        string
-	Logger            *slog.Logger
+	PrimaryConnStr  string
+	ReplicaConnStrs []string
+	ListenAddr      string
+	Logger          *slog.Logger
 }
 
 // New creates a new workload App
@@ -226,7 +226,7 @@ func (a *App) handleWrite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"id":     id,
 		"status": "created",
 	})
@@ -267,7 +267,7 @@ func (a *App) handleRead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	json.NewEncoder(w).Encode(map[string]any{
 		"orders": orders,
 		"count":  len(orders),
 	})

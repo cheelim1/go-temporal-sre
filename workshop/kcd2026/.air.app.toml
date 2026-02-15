@@ -3,7 +3,14 @@ tmp_dir = "tmp/app"
 
 [build]
   cmd = "go build -o ./tmp/app/main ./cmd/app"
-  bin = "./tmp/app/main"
+  # Entrypoint binary relative to root. First item is the executable, more items are default arguments.
+  entrypoint = ["./tmp/app/main"]
+  # Customize binary, can setup environment variables when run your app.
+  # full_bin = "APP_ENV=dev APP_USER=air ./tmp/main"
+  # Add additional arguments when running binary (bin/full_bin). Will run './tmp/main hello world'.
+  # args_bin = ["hello", "world"]
+  # Ignore dangerous root directory that could cause excessive file watching
+  ignore_dangerous_root_dir = true
   include_ext = ["go"]
   include_dir = ["cmd/app", "pkg"]
   exclude_dir = ["tmp", "bin"]

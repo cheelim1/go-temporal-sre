@@ -54,9 +54,9 @@ func main() {
 
 	// Create worker with versioning support
 	w := worker.New(c, taskQueue, worker.Options{
-		BuildID:                          buildID,
-		UseBuildIDForVersioning:          true,
-		MaxConcurrentActivityExecutionSize: 10,
+		BuildID:                                buildID,
+		UseBuildIDForVersioning:                true,
+		MaxConcurrentActivityExecutionSize:     10,
 		MaxConcurrentWorkflowTaskExecutionSize: 10,
 	})
 
@@ -103,18 +103,18 @@ func NewTemporalLogger(logger *slog.Logger) *TemporalLogger {
 	return &TemporalLogger{logger: logger}
 }
 
-func (l *TemporalLogger) Debug(msg string, keyvals ...interface{}) {
+func (l *TemporalLogger) Debug(msg string, keyvals ...any) {
 	l.logger.Debug(msg, keyvals...)
 }
 
-func (l *TemporalLogger) Info(msg string, keyvals ...interface{}) {
+func (l *TemporalLogger) Info(msg string, keyvals ...any) {
 	l.logger.Info(msg, keyvals...)
 }
 
-func (l *TemporalLogger) Warn(msg string, keyvals ...interface{}) {
+func (l *TemporalLogger) Warn(msg string, keyvals ...any) {
 	l.logger.Warn(msg, keyvals...)
 }
 
-func (l *TemporalLogger) Error(msg string, keyvals ...interface{}) {
+func (l *TemporalLogger) Error(msg string, keyvals ...any) {
 	l.logger.Error(msg, keyvals...)
 }

@@ -5,8 +5,13 @@ TASK_QUEUE = "kcd2026-task-queue"
 BUILD_ID = "dev-build"
 LISTEN_ADDR = ":8080"
 
+# [settings]
+# env_shell_expand = true
+
 [tools]
-go = "1.25"
+air = "latest"
+"github:vectorize-io/pg0" = "latest"
+go = "latest"
 
 [tasks.test]
 description = "Run all tests (short mode, no external deps)"
