@@ -1,3 +1,5 @@
+
+
 # go-temporal-sre
 
 **SRE day to day powered by Temporal**
@@ -97,7 +99,7 @@ Configuration is managed through environment variables:
 ```bash
 # Temporal connection
 TEMPORAL_HOST=localhost:7233
-TEMPORAL_namespace=default
+TEMPORAL_NAMESPACE=default
 
 # Worker settings
 MAX_CONCURRENT_ACTIVITIES=10
